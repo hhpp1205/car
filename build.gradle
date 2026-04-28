@@ -144,19 +144,22 @@ tasks.register('jpackage', Exec) {
 
     workingDir = projectDir
 
+    // WiX 3.x 는 jpackage 임시 경로에 한글이 들어가면 light.exe 가 311 로 죽는다.
+    // 해결: jpackage --name 은 ASCII 로, 앱 창 제목은 Main.java 의 stage.setTitle() 로 한글 표기.
+    // 영향: 설치 폴더명 · 시작메뉴 항목명 · .exe 파일명만 ASCII (사용자가 보는 앱 화면 자체는 한글).
     def cmd = [
             'jpackage',
-            '--name',         '전북공업사',
+            '--name',         'JeonbukRepair',
             '--app-version',  project.version.toString().replaceAll('[^0-9.]', '0'),  // jpackage 는 숫자 버전만 허용
-            '--vendor',       '전북공업사',
-            '--description',  '자동차 정비업체 통합 관리 시스템',
+            '--vendor',       'Jeonbuk Engineering',
+            '--description',  'Auto repair shop management system',
             '--input',        stageDir.absolutePath,
             '--main-jar',     mainJarName,
             '--main-class',   'com.jeonbuk.repair.Launcher',
             '--dest',         outDir.absolutePath,
             '--type',         'exe',
             '--win-menu',
-            '--win-menu-group', '전북공업사',
+            '--win-menu-group', 'JeonbukRepair',
             '--win-shortcut',
             '--win-dir-chooser',
             '--win-per-user-install',
