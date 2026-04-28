@@ -1,24 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.Tab?>
-<?import javafx.scene.control.TabPane?>
-<?import javafx.scene.layout.BorderPane?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.jeonbuk.repair.controller.MainController"
-            prefWidth="1200" prefHeight="780">
+            prefWidth="1280" prefHeight="800"
+            styleClass="app-root">
 
-    <top>
-        <Label text="전북공업사 통합 관리 시스템" styleClass="app-title"/>
-    </top>
+    <left>
+        <VBox styleClass="sidebar" prefWidth="220">
+            <padding><Insets top="20" right="14" bottom="20" left="14"/></padding>
+
+            <Label text="전북공업사" styleClass="brand"/>
+            <Label text="통합 관리 시스템" styleClass="brand-sub"/>
+
+            <Region styleClass="brand-divider">
+                <VBox.margin><Insets top="14" bottom="10"/></VBox.margin>
+            </Region>
+
+            <Button fx:id="navDashboard" text="대시보드"     styleClass="nav-button" maxWidth="Infinity" onAction="#onNavDashboard"/>
+            <Button fx:id="navIntake"    text="입/출고관리" styleClass="nav-button" maxWidth="Infinity" onAction="#onNavIntake"/>
+            <Button fx:id="navRental"    text="대차관리"    styleClass="nav-button" maxWidth="Infinity" onAction="#onNavRental"/>
+
+            <Region VBox.vgrow="ALWAYS"/>
+
+            <Label text="v0.1.0" styleClass="version-label"/>
+        </VBox>
+    </left>
 
     <center>
-        <TabPane fx:id="tabs" tabClosingPolicy="UNAVAILABLE">
-            <tabs>
-                <Tab text="입/출고관리" fx:id="intakeTab"/>
-                <Tab text="대차관리"   fx:id="rentalTab"/>
-            </tabs>
-        </TabPane>
+        <StackPane fx:id="content" styleClass="content-area"/>
     </center>
 </BorderPane>

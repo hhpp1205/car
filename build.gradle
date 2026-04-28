@@ -35,6 +35,9 @@ dependencies {
     // SQLite JDBC
     implementation 'org.xerial:sqlite-jdbc:3.45.3.0'
 
+    // AtlantaFX — 모던한 JavaFX 테마 (Primer/Cupertino/Nord/Dracula)
+    implementation 'io.github.mkpaz:atlantafx-base:2.0.1'
+
     // Apache POI (Excel I/O)
     implementation 'org.apache.poi:poi:5.2.5'
     implementation 'org.apache.poi:poi-ooxml:5.2.5'

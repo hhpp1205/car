@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.jeonbuk.repair.controller.DashboardController"
+      styleClass="page" spacing="20">
+    <padding><Insets top="28" right="32" bottom="28" left="32"/></padding>
+
+    <HBox alignment="CENTER_LEFT" spacing="12">
+        <Label text="대시보드" styleClass="page-title"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="새로고침" styleClass="button-outlined" onAction="#onRefresh"/>
+    </HBox>
+
+    <!-- 카드 4개 -->
+    <HBox spacing="16" styleClass="card-grid">
+        <VBox styleClass="card, card-accent-blue" HBox.hgrow="ALWAYS">
+            <Label text="진행 중 입고"          styleClass="card-label"/>
+            <Label fx:id="inProgressValue"     styleClass="card-number" text="0"/>
+            <Label fx:id="inProgressFootnote"  styleClass="card-footnote" text="아직 출고되지 않은 차량"/>
+        </VBox>
+        <VBox styleClass="card, card-accent-amber" HBox.hgrow="ALWAYS">
+            <Label text="미수금 합계"          styleClass="card-label"/>
+            <Label fx:id="outstandingValue"   styleClass="card-number" text="0원"/>
+            <Label fx:id="outstandingFootnote" styleClass="card-footnote" text="청구 후 미수령 금액"/>
+        </VBox>
+        <VBox styleClass="card, card-accent-green" HBox.hgrow="ALWAYS">
+            <Label text="대차 중 차량"        styleClass="card-label"/>
+            <Label fx:id="rentalActiveValue" styleClass="card-number" text="0"/>
+            <Label fx:id="rentalActiveFootnote" styleClass="card-footnote" text="현재 대여 중"/>
+        </VBox>
+        <VBox styleClass="card, card-accent-red" HBox.hgrow="ALWAYS">
+            <Label text="30일 경과 미수령"    styleClass="card-label"/>
+            <Label fx:id="overdueValue"      styleClass="card-number" text="0"/>
+            <Label fx:id="overdueFootnote"   styleClass="card-footnote" text="청구 후 30일+ 경과"/>
+        </VBox>
+    </HBox>
+
+    <!-- 최근 입고 -->
+    <Label text="최근 입고" styleClass="section-title">
+        <VBox.margin><Insets top="8"/></VBox.margin>
+    </Label>
+
+    <TableView fx:id="recentTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="colIntakeNo"     text="입고번호"   prefWidth="110"/>
+            <TableColumn fx:id="colIntakeDate"   text="입고일"     prefWidth="110"/>
+            <TableColumn fx:id="colVehicleName"  text="차량명"     prefWidth="160"/>
+            <TableColumn fx:id="colVehicleNo"    text="차량번호"   prefWidth="130"/>
+            <TableColumn fx:id="colRepairType"   text="수리구분"   prefWidth="100"/>
+            <TableColumn fx:id="colStage"        text="진행상태"   prefWidth="120"/>
+            <TableColumn fx:id="colReleaseDate"  text="출고일"     prefWidth="110"/>
+        </columns>
+        <placeholder><Label text="아직 입고된 차량이 없습니다."/></placeholder>
+    </TableView>
+</VBox>

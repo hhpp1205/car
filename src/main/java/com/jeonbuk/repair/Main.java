@@ -1,5 +1,7 @@
 package com.jeonbuk.repair;
 
+import atlantafx.base.theme.CupertinoLight;
+import com.jeonbuk.repair.util.Fonts;
 import com.jeonbuk.repair.util.HibernateUtil;
 import com.jeonbuk.repair.view.ViewLoader;
 import javafx.application.Application;
@@ -15,6 +17,12 @@ public class Main extends Application {
 
     @Override
     public void start(Stage stage) {
+        // 번들된 Pretendard 폰트 등록 — 지인 PC 에 폰트가 설치돼있지 않아도 동일 룩 보장
+        Fonts.registerAll();
+
+        // 모던 테마 — Primer (GitHub 스타일). 다른 옵션: PrimerDark, NordLight, NordDark, CupertinoLight, CupertinoDark, Dracula
+        Application.setUserAgentStylesheet(new CupertinoLight().getUserAgentStylesheet());
+
         // SessionFactory 부트스트랩 — DB 마이그레이션·시드 적용
         HibernateUtil.getSessionFactory();
 
