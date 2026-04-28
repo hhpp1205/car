@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+    <session-factory>
+        <!-- DB 연결 (data/repair.db) -->
+        <property name="hibernate.connection.driver_class">org.sqlite.JDBC</property>
+        <property name="hibernate.connection.url">jdbc:sqlite:data/repair.db?foreign_keys=on&amp;date_class=TEXT&amp;date_string_format=yyyy-MM-dd HH:mm:ss.SSS</property>
+        <property name="hibernate.connection.username"></property>
+        <property name="hibernate.connection.password"></property>
+
+        <!-- SQLite Dialect (community-dialects) -->
+        <property name="hibernate.dialect">org.hibernate.community.dialect.SQLiteDialect</property>
+
+        <!-- 단일 사용자 / 단일 PC : pool 1 -->
+        <property name="hibernate.connection.pool_size">1</property>
+
+        <!-- 스키마는 직접 마이그레이션 SQL로 관리 -->
+        <property name="hibernate.hbm2ddl.auto">none</property>
+
+        <property name="hibernate.show_sql">false</property>
+        <property name="hibernate.format_sql">false</property>
+
+        <!-- Entity -->
+        <mapping class="com.jeonbuk.repair.model.CustomerIntake"/>
+        <mapping class="com.jeonbuk.repair.model.InsuranceClaim"/>
+        <mapping class="com.jeonbuk.repair.model.RentalHistory"/>
+        <mapping class="com.jeonbuk.repair.model.RentalVehicle"/>
+        <mapping class="com.jeonbuk.repair.model.InsuranceCompany"/>
+    </session-factory>
+</hibernate-configuration>

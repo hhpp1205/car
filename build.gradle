@@ -1,0 +1,173 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'jacoco'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
+group = 'com.jeonbuk.repair'
+version = '0.1.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+javafx {
+    version = '21.0.2'
+    modules = ['javafx.controls', 'javafx.fxml']
+}
+
+ext {
+    hibernateVersion = '6.4.4.Final'
+}
+
+dependencies {
+    // Hibernate ORM (Jakarta API)
+    implementation "org.hibernate.orm:hibernate-core:${hibernateVersion}"
+    implementation "org.hibernate.orm:hibernate-community-dialects:${hibernateVersion}"
+
+    // SQLite JDBC
+    implementation 'org.xerial:sqlite-jdbc:3.45.3.0'
+
+    // Apache POI (Excel I/O)
+    implementation 'org.apache.poi:poi:5.2.5'
+    implementation 'org.apache.poi:poi-ooxml:5.2.5'
+
+    // Logging
+    implementation 'org.slf4j:slf4j-api:2.0.13'
+    implementation 'ch.qos.logback:logback-classic:1.5.6'
+    // Hibernate 내부에서 Log4j2 API 를 사용하는 경로가 일부 있어 SLF4J 로 라우팅
+    implementation 'org.apache.logging.log4j:log4j-to-slf4j:2.23.1'
+
+    // Test
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-params:5.10.2'
+    testRuntimeOnly  'org.junit.platform:junit-platform-launcher'
+}
+
+application {
+    // 개발용 ./gradlew run 은 JavaFX 플러그인이 모듈 처리를 해주므로 Main 직접 사용 가능
+    mainClass = 'com.jeonbuk.repair.Main'
+}
+
+jacoco {
+    toolVersion = '0.8.11'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+        showStandardStreams = false
+        showExceptions = true
+        showStackTraces = true
+        exceptionFormat 'full'
+    }
+
+    // 통합 테스트가 SQLite 파일을 임시 생성 — JVM 별 격리
+    maxParallelForks = 1
+
+    finalizedBy tasks.named('jacocoTestReport')
+}
+
+tasks.named('jacocoTestReport') {
+    dependsOn tasks.named('test')
+    reports {
+        xml.required  = true
+        html.required = true
+    }
+}
+
+// `gradle check` 가 자동으로 test 를 호출하도록 (기본 동작이지만 명시)
+tasks.named('check') {
+    dependsOn tasks.named('test')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-Xlint:deprecation']
+}
+
+// 테스트 데이터 100건 시드 — `./gradlew seedTestData`
+tasks.register('seedTestData', JavaExec) {
+    group = 'application'
+    description = '입고 테스트 데이터 100건을 사용자 영역 DB 에 적재한다 (멱등 아님). 별도 위치는 JEONBUK_REPAIR_HOME 환경변수.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.jeonbuk.repair.util.TestDataSeeder'
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// 배포 — jpackage 로 .exe 인스톨러 생성
+//
+// 사전 조건 (개발자 PC 에 1회만 설치):
+//   1. JDK 17 (Liberica Full 등 — jpackage · JavaFX 모듈 포함)
+//   2. WiX Toolset 3.14 — jpackage 가 .exe 만들 때 내부적으로 호출
+//
+// 실행:
+//   ./gradlew jpackage
+// 결과:
+//   build/jpackage/전북공업사-<version>.exe
+// ─────────────────────────────────────────────────────────────────────
+
+// 1) JavaFX 의존성을 포함한 모든 런타임 jar 를 한 폴더에 모은다 (jpackage --input)
+tasks.register('jpackageStage', Copy) {
+    group = 'distribution'
+    description = 'jpackage 입력 폴더 구성 — 메인 jar + 런타임 의존성을 build/jpackage-input 에 복사.'
+    dependsOn tasks.named('jar')
+    from configurations.runtimeClasspath
+    from tasks.named('jar')
+    into layout.buildDirectory.dir('jpackage-input')
+}
+
+// 2) jpackage 호출 — Windows .exe 인스톨러
+tasks.register('jpackage', Exec) {
+    group = 'distribution'
+    description = '.exe 인스톨러 생성 (build/jpackage/). WiX Toolset 3.14 필요.'
+    dependsOn tasks.named('jpackageStage')
+
+    def stageDir   = layout.buildDirectory.dir('jpackage-input').get().asFile
+    def outDir     = layout.buildDirectory.dir('jpackage').get().asFile
+    def mainJarName = "${project.name}-${project.version}.jar"
+
+    doFirst {
+        // 이전 결과물 삭제 — jpackage 가 동일 파일 존재 시 실패함
+        delete outDir
+        outDir.mkdirs()
+    }
+
+    workingDir = projectDir
+
+    def cmd = [
+            'jpackage',
+            '--name',         '전북공업사',
+            '--app-version',  project.version.toString().replaceAll('[^0-9.]', '0'),  // jpackage 는 숫자 버전만 허용
+            '--vendor',       '전북공업사',
+            '--description',  '자동차 정비업체 통합 관리 시스템',
+            '--input',        stageDir.absolutePath,
+            '--main-jar',     mainJarName,
+            '--main-class',   'com.jeonbuk.repair.Launcher',
+            '--dest',         outDir.absolutePath,
+            '--type',         'exe',
+            '--win-menu',
+            '--win-menu-group', '전북공업사',
+            '--win-shortcut',
+            '--win-dir-chooser',
+            '--win-per-user-install',
+            '--java-options', '-Dfile.encoding=UTF-8'
+    ]
+
+    // 아이콘 파일이 있으면 포함
+    def iconFile = file('src/main/resources/icon.ico')
+    if (iconFile.exists()) {
+        cmd += ['--icon', iconFile.absolutePath]
+    }
+
+    commandLine cmd
+}

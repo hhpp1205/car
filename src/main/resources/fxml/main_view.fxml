@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.control.Label?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.jeonbuk.repair.controller.MainController"
+            prefWidth="1200" prefHeight="780">
+
+    <top>
+        <Label text="전북공업사 통합 관리 시스템" styleClass="app-title"/>
+    </top>
+
+    <center>
+        <TabPane fx:id="tabs" tabClosingPolicy="UNAVAILABLE">
+            <tabs>
+                <Tab text="입/출고관리" fx:id="intakeTab"/>
+                <Tab text="대차관리"   fx:id="rentalTab"/>
+            </tabs>
+        </TabPane>
+    </center>
+</BorderPane>

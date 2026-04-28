@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.ToolBar?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.jeonbuk.repair.controller.RentalHistoryController">
+
+    <top>
+        <ToolBar>
+            <CheckBox fx:id="onlyActiveCheck" text="대차중만"/>
+            <Button text="새로고침" onAction="#onReload"/>
+            <Label text="    "/>
+            <Button text="신규" onAction="#onNew" styleClass="primary"/>
+            <Button text="삭제" onAction="#onDelete"/>
+        </ToolBar>
+    </top>
+
+    <center>
+        <SplitPane dividerPositions="0.55" orientation="HORIZONTAL">
+
+            <TableView fx:id="rentalTable">
+                <columns>
+                    <TableColumn fx:id="colIntakeNo"   text="입고번호" prefWidth="100"/>
+                    <TableColumn fx:id="colVehicle"    text="대차차량" prefWidth="160"/>
+                    <TableColumn fx:id="colStartDate"  text="시작일"   prefWidth="100"/>
+                    <TableColumn fx:id="colEndDate"    text="종료일"   prefWidth="100"/>
+                    <TableColumn fx:id="colDays"       text="일수"     prefWidth="60"/>
+                    <TableColumn fx:id="colMemo"       text="메모"     prefWidth="160"/>
+                </columns>
+            </TableView>
+
+            <VBox spacing="8">
+                <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+                <Label text="대차 상세" styleClass="section-title"/>
+
+                <GridPane hgap="8" vgap="8">
+                    <columnConstraints>
+                        <ColumnConstraints minWidth="100" prefWidth="100"/>
+                        <ColumnConstraints hgrow="ALWAYS" prefWidth="240"/>
+                    </columnConstraints>
+                    <rowConstraints>
+                        <RowConstraints/><RowConstraints/><RowConstraints/>
+                        <RowConstraints/><RowConstraints/><RowConstraints/>
+                    </rowConstraints>
+
+                    <Label text="입고 선택*"   GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                    <ChoiceBox fx:id="intakeChoice" maxWidth="Infinity"
+                               GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+
+                    <Label text="대차차량*"    GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                    <ComboBox fx:id="vehicleCombo" maxWidth="Infinity"
+                              GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+                    <Label text="시작일*"      GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                    <HBox spacing="6" alignment="CENTER_LEFT"
+                          GridPane.columnIndex="1" GridPane.rowIndex="2">
+                        <DatePicker fx:id="startDatePicker" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+                        <CheckBox fx:id="cbStartDateToday" text="오늘"/>
+                    </HBox>
+
+                    <Label text="종료일"       GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                    <HBox spacing="6" alignment="CENTER_LEFT"
+                          GridPane.columnIndex="1" GridPane.rowIndex="3">
+                        <DatePicker fx:id="endDatePicker" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+                        <CheckBox fx:id="cbEndDateToday" text="오늘"/>
+                    </HBox>
+
+                    <Label text="메모"         GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                    <TextArea fx:id="memoArea" prefRowCount="3"
+                              GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+
+                    <HBox spacing="8" GridPane.columnIndex="0" GridPane.rowIndex="5" GridPane.columnSpan="2">
+                        <Button text="저장"   onAction="#onSave" styleClass="primary"/>
+                        <Button text="초기화" onAction="#onClear"/>
+                    </HBox>
+                </GridPane>
+            </VBox>
+        </SplitPane>
+    </center>
+</BorderPane>

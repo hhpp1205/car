@@ -1,0 +1,29 @@
+# Build
+.gradle/
+build/
+out/
+bin/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.project
+.classpath
+.settings/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Local DB / 백업
+data/*.db
+data/*.db-journal
+data/backup/
+!data/.gitkeep

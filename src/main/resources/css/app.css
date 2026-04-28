@@ -1,0 +1,51 @@
+.root {
+    -fx-font-family: "Malgun Gothic", "맑은 고딕", "Noto Sans KR", sans-serif;
+    -fx-font-size: 13px;
+}
+
+.app-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-padding: 10 16 10 16;
+    -fx-background-color: #2d3a4a;
+    -fx-text-fill: white;
+    -fx-max-width: infinity;
+}
+
+.section-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 0 0 4 0;
+}
+
+.hint {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6b7280;
+    -fx-font-style: italic;
+}
+
+.button.primary {
+    -fx-base: #3b82f6;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.tab-pane .tab {
+    -fx-padding: 6 18 6 18;
+}
+
+.table-view {
+    -fx-table-cell-border-color: #e5e7eb;
+}
+
+/* 그룹 헤더 (카테고리) — 자식 컬럼들의 상위 라벨 */
+.table-view .column-header.group-header > .label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #1f2937;
+}
+
+.table-view .column-header.group-header {
+    -fx-background-color: #e5edf7;
+    -fx-border-color: #c7d2fe;
+    -fx-border-width: 0 1 1 0;
+}
