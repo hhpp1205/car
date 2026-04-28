@@ -20,7 +20,9 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.geometry.Side;
+import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.util.StringConverter;
 
@@ -43,6 +45,14 @@ public class CustomerIntakeController {
 
     private final CustomerIntakeService   intakeService   = ServiceRegistry.get().intakeService();
     private final IntakeWorkflowService   workflowService = ServiceRegistry.get().workflowService();
+
+    // ----- 레이아웃 -----
+    @FXML private SplitPane  mainSplit;
+    @FXML private ScrollPane formPane;
+    /** 저장 직후 selectByIntakeNo() 가 row selection 을 트리거할 때 폼이 다시 뜨지 않도록 막는 플래그. */
+    private boolean suppressFormShow = false;
+    /** mouse press 시점의 선택 — click 시점엔 selection 이 이미 갱신돼있어 같은-row 재클릭 판별용. */
+    private CustomerIntake selectionBeforeClick;
 
     // ----- 좌측 테이블 -----
     @FXML private TextField searchField;
@@ -145,6 +155,7 @@ public class CustomerIntakeController {
         configureTable();
         configureForm();
         reload();
+        hideForm();  // 첫 진입 시 입력 폼은 숨김 — 신규/row 클릭 시에만 표시
     }
 
     // -------------------- 테이블 --------------------
@@ -196,8 +207,67 @@ public class CustomerIntakeController {
 
         intakeTable.setItems(data);
         intakeTable.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
-            if (newV != null) loadToForm(newV);
+            if (newV != null) {
+                loadToForm(newV);
+                if (!suppressFormShow) showForm();
+            }
         });
+
+        // 테이블의 빈 영역(데이터 없는 row, placeholder, 스크롤 여백) 클릭 시 폼 닫기.
+        // 헤더 클릭(정렬)은 native 동작을 유지하기 위해 제외.
+        //
+        // press 시점에 직전 선택을 저장 — click 시점엔 selection 이 이미 갱신돼 있어 비교가 의미 없다.
+        // setOnMousePressed (event handler) 는 JavaFX 의 default selection update 보다 *후에* 실행되므로
+        // capturing phase 의 addEventFilter 로 등록해야 selection 갱신 전 시점을 잡을 수 있다.
+        intakeTable.addEventFilter(MouseEvent.MOUSE_PRESSED, e ->
+                selectionBeforeClick = intakeTable.getSelectionModel().getSelectedItem());
+
+        intakeTable.setOnMouseClicked(e -> {
+            Node picked = e.getPickResult().getIntersectedNode();
+            if (isInsideTableHeader(picked)) return;
+            TableRow<?> row = findTableRow(picked);
+            if (row == null || row.isEmpty()) {
+                intakeTable.getSelectionModel().clearSelection();
+                hideForm();
+                return;
+            }
+            CustomerIntake clicked = (CustomerIntake) row.getItem();
+            boolean sameRowReclick = clicked != null
+                    && selectionBeforeClick != null
+                    && java.util.Objects.equals(clicked.getId(), selectionBeforeClick.getId());
+            if (sameRowReclick) {
+                // 토글 — 폼이 떠있으면 닫고 선택 해제, 닫혀있으면 다시 띄움
+                if (isFormVisible()) {
+                    intakeTable.getSelectionModel().clearSelection();
+                    hideForm();
+                } else {
+                    loadToForm(clicked);
+                    showForm();
+                }
+            }
+            // 다른 row 클릭 → selection listener 가 알아서 loadToForm + showForm 처리
+        });
+    }
+
+    private boolean isFormVisible() {
+        return formPane != null && mainSplit != null && mainSplit.getItems().contains(formPane);
+    }
+
+    private static boolean isInsideTableHeader(Node node) {
+        for (Node n = node; n != null; n = n.getParent()) {
+            String name = n.getClass().getSimpleName();
+            if (name.contains("ColumnHeader") || name.contains("HeaderRow")) return true;
+            if (n.getStyleClass().contains("column-header-background")
+                || n.getStyleClass().contains("column-header")) return true;
+        }
+        return false;
+    }
+
+    private static TableRow<?> findTableRow(Node node) {
+        for (Node n = node; n != null; n = n.getParent()) {
+            if (n instanceof TableRow<?> tr) return tr;
+        }
+        return null;
     }
 
     private TableCell<CustomerIntake, LocalDate> dateCell() {
@@ -337,12 +407,26 @@ public class CustomerIntakeController {
         editingOwnClaim = null;
         editingOpponentClaim = null;
         intakeTable.getSelectionModel().clearSelection();
+        showForm();
+        intakeDatePicker.requestFocus();
+    }
+
+    /** 입력 폼의 값만 비우고 닫지는 않음. (이전엔 onNew 로 위임) */
+    @FXML
+    private void onClear() {
+        clearForm();
+        editing = null;
+        editingRental = null;
+        editingOwnClaim = null;
+        editingOpponentClaim = null;
+        intakeTable.getSelectionModel().clearSelection();
         intakeDatePicker.requestFocus();
     }
 
     @FXML
-    private void onClear() {
-        onNew();
+    private void onCloseForm() {
+        hideForm();
+        intakeTable.getSelectionModel().clearSelection();
     }
 
     @FXML
@@ -353,7 +437,14 @@ public class CustomerIntakeController {
             Dialogs.info("저장", "입고번호 " + saved.getIntakeNo() + " 저장되었습니다.");
             reload();
             reloadVehicleNameSuggestions();
-            selectByIntakeNo(saved.getIntakeNo());
+            // 저장된 row 를 강조하되 listener 가 폼을 다시 띄우지 않도록 막은 후 닫기
+            suppressFormShow = true;
+            try {
+                selectByIntakeNo(saved.getIntakeNo());
+            } finally {
+                suppressFormShow = false;
+            }
+            hideForm();
         } catch (IllegalArgumentException e) {
             Dialogs.warn("입력 오류", e.getMessage());
         } catch (RuntimeException e) {
@@ -373,8 +464,27 @@ public class CustomerIntakeController {
             return;
         }
         intakeService.delete(sel.getId());
-        onNew();
+        clearForm();
+        editing = null;
+        editingRental = null;
+        editingOwnClaim = null;
+        editingOpponentClaim = null;
+        intakeTable.getSelectionModel().clearSelection();
+        hideForm();
         reload();
+    }
+
+    private void showForm() {
+        if (formPane == null || mainSplit == null) return;
+        if (!mainSplit.getItems().contains(formPane)) {
+            mainSplit.getItems().add(formPane);
+            mainSplit.setDividerPositions(0.45);
+        }
+    }
+
+    private void hideForm() {
+        if (formPane == null || mainSplit == null) return;
+        mainSplit.getItems().remove(formPane);
     }
 
     // -------------------- 헬퍼 --------------------
