@@ -101,6 +101,11 @@
                 <VBox spacing="14">
                     <padding><Insets top="12" right="14" bottom="12" left="14"/></padding>
 
+                    <!-- 닫기 X 버튼 -->
+                    <HBox alignment="CENTER_RIGHT">
+                        <Button text="✕" onAction="#onCloseForm" styleClass="form-close-button"/>
+                    </HBox>
+
                     <!-- 1. 입고 정보 -->
                     <Label text="1. 입고 정보" styleClass="section-title"/>
                     <GridPane hgap="8" vgap="8">
