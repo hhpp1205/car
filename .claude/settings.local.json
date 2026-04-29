@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew compileJava)",
+      "Bash(./gradlew compileJava *)",
+      "Bash(./gradlew check *)",
+      "Bash(grep -rn \"Glass\\\\\\\\|prism\" src/main/java)",
+      "Bash(grep -n \"headless\\\\\\\\|Monocle\" src/main)",
+      "Bash(./gradlew snapshot *)",
+      "Bash(./gradlew run *)",
+      "Bash(./gradlew test *)",
+      "Bash(npx -y skills find java)",
+      "Bash(npx -y skills find testing)",
+      "Bash(npx -y skills find junit)",
+      "Bash(npx -y skills find sqlite)",
+      "Bash(npx -y skills find gradle)",
+      "Bash(npx -y skills find hibernate)",
+      "Bash(npx -y skills find javafx)",
+      "Bash(npx -y skills find excel)",
+      "Bash(npx -y skills find code-review)",
+      "Bash(npx -y skills add --help)",
+      "Bash(npx -y skills --help)",
+      "Bash(npx -y skills add github/awesome-copilot --skill java-junit -y)",
+      "Bash(npx -y skills add pluginagentmarketplace/custom-plugin-java --skill java-jpa-hibernate -y)",
+      "Bash(npx -y skills add pluginagentmarketplace/custom-plugin-java --skill java-gradle -y)",
+      "Bash(npx -y skills add claude-office-skills/skills --skill excel-automation -y)",
+      "Bash(npx -y skills list)"
+    ]
+  }
+}
