@@ -22,8 +22,11 @@ import javafx.fxml.FXML;
 import javafx.geometry.Side;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 import javafx.util.StringConverter;
 
 import java.time.LocalDate;
@@ -47,8 +50,8 @@ public class CustomerIntakeController {
     private final IntakeWorkflowService   workflowService = ServiceRegistry.get().workflowService();
 
     // ----- 레이아웃 -----
-    @FXML private SplitPane  mainSplit;
-    @FXML private ScrollPane formPane;
+    @FXML private SplitPane mainSplit;
+    @FXML private VBox      formPane;
     /** 저장 직후 selectByIntakeNo() 가 row selection 을 트리거할 때 폼이 다시 뜨지 않도록 막는 플래그. */
     private boolean suppressFormShow = false;
     /** mouse press 시점의 선택 — click 시점엔 selection 이 이미 갱신돼있어 같은-row 재클릭 판별용. */
@@ -94,9 +97,6 @@ public class CustomerIntakeController {
     @FXML private TextField  towDriverField;
     @FXML private TextField  towAmountField;
     @FXML private TextArea   memoArea;
-    @FXML private CheckBox   cbIntakeDateToday;
-    @FXML private CheckBox   cbReleaseDateToday;
-    @FXML private CheckBox   cbSelfPayDateToday;
 
     // ----- 2. 대차 -----
     @FXML private CheckBox useRentalCheck;
@@ -104,8 +104,6 @@ public class CustomerIntakeController {
     @FXML private ComboBox<RentalVehicle> rentalVehicleCombo;
     @FXML private DatePicker rentalStartPicker;
     @FXML private DatePicker rentalEndPicker;
-    @FXML private CheckBox   cbRentalStartToday;
-    @FXML private CheckBox   cbRentalEndToday;
     @FXML private TextArea   rentalMemoArea;
     @FXML private Label      rentalNotice;
 
@@ -117,8 +115,6 @@ public class CustomerIntakeController {
     @FXML private TextField  ownClaimAmountField;
     @FXML private TextField  ownReceivedAmountField;
     @FXML private DatePicker ownReceivedDatePicker;
-    @FXML private CheckBox   cbOwnClaimDateToday;
-    @FXML private CheckBox   cbOwnReceivedDateToday;
     @FXML private TextArea   ownClaimMemoArea;
 
     // ----- 4. 상대 청구 -----
@@ -129,8 +125,6 @@ public class CustomerIntakeController {
     @FXML private TextField  opponentClaimAmountField;
     @FXML private TextField  opponentReceivedAmountField;
     @FXML private DatePicker opponentReceivedDatePicker;
-    @FXML private CheckBox   cbOpponentClaimDateToday;
-    @FXML private CheckBox   cbOpponentReceivedDateToday;
     @FXML private TextArea   opponentClaimMemoArea;
 
     // ----- 상태 -----
@@ -156,6 +150,27 @@ public class CustomerIntakeController {
         configureForm();
         reload();
         hideForm();  // 첫 진입 시 입력 폼은 숨김 — 신규/row 클릭 시에만 표시
+        installEscToCloseForm();
+    }
+
+    /**
+     * 폼이 떠있을 때 ESC 키로 닫는다.
+     *
+     * scene 이 붙는 시점은 컨트롤러 initialize 이후이므로 sceneProperty 리스너로 지연 등록.
+     * bubble 단계(addEventHandler)로 등록 — DatePicker/ComboBox 팝업이 ESC 를 먼저 소비하면
+     * 우리 핸들러는 호출되지 않아 팝업 닫기 동작이 보존된다.
+     */
+    private void installEscToCloseForm() {
+        intakeTable.sceneProperty().addListener((obs, oldScene, scene) -> {
+            if (scene != null) {
+                scene.addEventHandler(KeyEvent.KEY_PRESSED, e -> {
+                    if (e.getCode() == KeyCode.ESCAPE && isFormVisible()) {
+                        onCloseForm();
+                        e.consume();
+                    }
+                });
+            }
+        });
     }
 
     // -------------------- 테이블 --------------------
@@ -166,8 +181,10 @@ public class CustomerIntakeController {
         colIntakeDate.setCellFactory(c -> dateCell());
         colVehicleName.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getVehicleName()));
         colVehicleNumber.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getVehicleNumber()));
+        // 보험여부 — 자차/대물 보험사명. 둘 다 있으면 "자차사/대물사" 형식.
+        // 보험사가 하나도 없으면 기존 수리구분 라벨(일반수리/보험수리) 로 폴백.
         colRepairType.setCellValueFactory(c -> new SimpleStringProperty(
-                c.getValue().getRepairType() == null ? "" : c.getValue().getRepairType().getLabel()));
+                insuranceLabel(c.getValue())));
         colReleaseDate.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().getReleaseDate()));
         colReleaseDate.setCellFactory(c -> dateCell());
         colSelfPayAmount.setCellValueFactory(c -> new SimpleStringProperty(
@@ -288,8 +305,8 @@ public class CustomerIntakeController {
         repairTypeChoice.setValue(RepairType.GENERAL);
         intakeDatePicker.setValue(LocalDate.now());
 
-        // 차량명: 입력 즉시 영문 대문자 변환 (한글은 toUpperCase 영향 없음)
-        vehicleNameField.setTextFormatter(upperCaseFormatter());
+        // 차량명: 영문 대문자 변환은 포커스를 잃을 때 일괄 처리 — 입력 중엔 IME 와 충돌하지 않게 둔다.
+        // (inline TextFormatter 는 한글 IME 조합 단계에 호출돼 "스" 입력 시 ㅡ 가 결합되지 않는 이슈가 있음)
         setupVehicleNameAutoComplete();
 
         // 전화번호: 숫자만 쳐도 010-1234-5678 형식으로 자동 포매팅 (최대 11자리).
@@ -347,8 +364,11 @@ public class CustomerIntakeController {
 
         // 섹션 활성화 바인딩
         rentalGrid.disableProperty().bind(useRentalCheck.selectedProperty().not());
+        rentalMemoArea.disableProperty().bind(useRentalCheck.selectedProperty().not());
         ownClaimGrid.disableProperty().bind(useOwnClaimCheck.selectedProperty().not());
+        ownClaimMemoArea.disableProperty().bind(useOwnClaimCheck.selectedProperty().not());
         opponentClaimGrid.disableProperty().bind(useOpponentClaimCheck.selectedProperty().not());
+        opponentClaimMemoArea.disableProperty().bind(useOpponentClaimCheck.selectedProperty().not());
 
         // 사고유형 → 청구 섹션 자동 활성화 (CLAUDE.md 요구사항)
         cbSelf.selectedProperty().addListener((obs, o, n) -> {
@@ -362,19 +382,11 @@ public class CustomerIntakeController {
             if (n && rentalStartPicker.getValue() == null) rentalStartPicker.setValue(LocalDate.now());
         });
 
-        // "오늘" 체크박스 — 클릭 시 옆 날짜 칸을 오늘로 채우고 즉시 체크 해제 (one-shot 동작)
-        wireTodayCheck(cbIntakeDateToday,           intakeDatePicker);
-        wireTodayCheck(cbReleaseDateToday,          releaseDatePicker);
-        wireTodayCheck(cbSelfPayDateToday,          selfPayDatePicker);
-        wireTodayCheck(cbRentalStartToday,          rentalStartPicker);
-        wireTodayCheck(cbRentalEndToday,            rentalEndPicker);
-        wireTodayCheck(cbOwnClaimDateToday,         ownClaimDatePicker);
-        wireTodayCheck(cbOwnReceivedDateToday,      ownReceivedDatePicker);
-        wireTodayCheck(cbOpponentClaimDateToday,    opponentClaimDatePicker);
-        wireTodayCheck(cbOpponentReceivedDateToday, opponentReceivedDatePicker);
+        // 입고일은 신규 시 자동으로 오늘로 설정 — 그 외 날짜는 사용자가 캘린더에서 직접 선택.
+        // "오늘" 체크박스 패턴은 UI 가 비좁아져 제거 (입고일은 intakeDatePicker.setValue(LocalDate.now()) 로 처리).
     }
 
-    /** 체크 시 날짜 칸을 LocalDate.now() 로 채우고 체크박스는 즉시 해제. */
+    /** 체크 시 날짜 칸을 LocalDate.now() 로 채우고 체크박스는 즉시 해제. RentalHistoryController 에서 사용. */
     static void wireTodayCheck(CheckBox cb, DatePicker dp) {
         cb.setOnAction(e -> {
             if (cb.isSelected()) {
@@ -478,7 +490,8 @@ public class CustomerIntakeController {
         if (formPane == null || mainSplit == null) return;
         if (!mainSplit.getItems().contains(formPane)) {
             mainSplit.getItems().add(formPane);
-            mainSplit.setDividerPositions(0.45);
+            // 세로 분할 — 상단 테이블 55% / 하단 폼 45%
+            mainSplit.setDividerPositions(0.55);
         }
     }
 
@@ -539,6 +552,25 @@ public class CustomerIntakeController {
 
     private static String claimDifference(InsuranceClaim c) {
         return c == null ? "" : Formatters.money(c.getOutstanding());
+    }
+
+    /**
+     * 보험여부 컬럼 표시값 — 자차/대물 보험사명. 둘 다 있으면 "자차사/대물사", 한쪽만 있으면 그 쪽만.
+     * 보험사가 하나도 없으면 기존 수리구분 라벨(일반수리/보험수리) 로 폴백.
+     */
+    private String insuranceLabel(CustomerIntake intake) {
+        String own = companyName(ownClaimByIntakeId.get(intake.getId()));
+        String opp = companyName(opponentClaimByIntakeId.get(intake.getId()));
+        if (own != null && opp != null) return own + "/" + opp;
+        if (own != null) return own;
+        if (opp != null) return opp;
+        return intake.getRepairType() == null ? "" : intake.getRepairType().getLabel();
+    }
+
+    private static String companyName(InsuranceClaim c) {
+        if (c == null) return null;
+        String name = c.getInsuranceCompany();
+        return (name == null || name.isBlank()) ? null : name.trim();
     }
 
     private void selectByIntakeNo(String intakeNo) {
@@ -768,11 +800,21 @@ public class CustomerIntakeController {
         return s == null ? null : (s.isBlank() ? null : s.trim());
     }
 
-    /** 영문만 대문자로 즉시 변환 (한글·숫자·기호는 영향 없음). 매 호출마다 새 인스턴스. */
+    /**
+     * 영문만 대문자로 즉시 변환 (한글·숫자·기호는 영향 없음). 매 호출마다 새 인스턴스.
+     *
+     * <p>한글 IME 호환성 — 변환 결과가 원본과 동일하면 {@code change.setText()} 를 호출하지 않는다.
+     * 한글 조합 중에는 IME 가 매 키 입력을 composition 상태로 유지하는데, 무조건 setText 를 호출하면
+     * 조합 상태가 끊겨 "스" 처럼 자음+모음 결합이 깨진다(자음만 보이고 모음이 사라지는 현상).
+     */
     static TextFormatter<String> upperCaseFormatter() {
         return new TextFormatter<>(change -> {
             if (change.isContentChange()) {
-                change.setText(change.getText().toUpperCase(java.util.Locale.ROOT));
+                String original = change.getText();
+                String upper = original.toUpperCase(java.util.Locale.ROOT);
+                if (!upper.equals(original)) {
+                    change.setText(upper);
+                }
             }
             return change;
         });
@@ -791,7 +833,15 @@ public class CustomerIntakeController {
 
         vehicleNameField.textProperty().addListener((obs, oldV, newV) -> updateVehicleNameAutoComplete(newV));
         vehicleNameField.focusedProperty().addListener((obs, was, focused) -> {
-            if (!focused) vehicleNameAutoComplete.hide();
+            if (!focused) {
+                // 포커스 빠질 때 영문을 대문자로 일괄 변환. 한글은 toUpperCase 영향 없음.
+                String t = vehicleNameField.getText();
+                if (t != null && !t.isEmpty()) {
+                    String upper = t.toUpperCase(Locale.ROOT);
+                    if (!upper.equals(t)) vehicleNameField.setText(upper);
+                }
+                vehicleNameAutoComplete.hide();
+            }
         });
     }
 

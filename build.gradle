@@ -20,7 +20,7 @@ repositories {
 
 javafx {
     version = '21.0.2'
-    modules = ['javafx.controls', 'javafx.fxml']
+    modules = ['javafx.controls', 'javafx.fxml', 'javafx.swing']
 }
 
 ext {
@@ -105,6 +105,11 @@ tasks.register('seedTestData', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.jeonbuk.repair.util.TestDataSeeder'
 }
+
+// 입/출고관리 폼 레이아웃 스냅샷 — `./gradlew run --args="snapshot"`
+// build/snapshots/layout.png 생성. 임시 DB 사용으로 사용자 데이터 영향 없음.
+// 별도 task 를 만들지 않는 이유: JavaFX 모듈 path 가 application 플러그인의 run 태스크에만
+// 자동 적용되므로, run 태스크를 재사용하고 Main.main 에서 args 로 분기.
 
 // ─────────────────────────────────────────────────────────────────────
 // 배포 — jpackage 로 .exe 인스톨러 생성

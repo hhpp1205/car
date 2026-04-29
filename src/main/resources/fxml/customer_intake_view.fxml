@@ -38,7 +38,7 @@
     </top>
 
     <center>
-        <SplitPane fx:id="mainSplit" dividerPositions="0.55" orientation="HORIZONTAL">
+        <SplitPane fx:id="mainSplit" dividerPositions="0.55" orientation="VERTICAL">
 
             <TableView fx:id="intakeTable">
                 <columns>
@@ -48,7 +48,7 @@
                             <TableColumn fx:id="colIntakeDate"    text="입고일"   prefWidth="100"/>
                             <TableColumn fx:id="colVehicleName"   text="차량명"   prefWidth="120"/>
                             <TableColumn fx:id="colVehicleNumber" text="차량번호" prefWidth="120"/>
-                            <TableColumn fx:id="colRepairType"    text="수리구분" prefWidth="80"/>
+                            <TableColumn fx:id="colRepairType"    text="보험여부" prefWidth="140"/>
                         </columns>
                     </TableColumn>
 
@@ -97,237 +97,213 @@
                 </columns>
             </TableView>
 
-            <ScrollPane fx:id="formPane" fitToWidth="true" hbarPolicy="NEVER">
-                <VBox spacing="14">
-                    <padding><Insets top="12" right="14" bottom="12" left="14"/></padding>
+            <VBox fx:id="formPane" spacing="6">
+                <padding><Insets top="6" right="12" bottom="10" left="12"/></padding>
 
-                    <!-- 닫기 X 버튼 -->
-                    <HBox alignment="CENTER_RIGHT">
-                        <Button text="✕" onAction="#onCloseForm" styleClass="form-close-button"/>
+                <!-- 닫기 X 버튼 — ScrollPane 바깥 상단에 고정해 가로폭이 좁아져도 항상 노출 -->
+                <HBox alignment="CENTER_RIGHT">
+                    <Button text="✕" onAction="#onCloseForm" styleClass="form-close-button"/>
+                </HBox>
+
+                <!-- 본문 — 입고 / 대차 / 자차 / 대물 4섹션 가로 배치 -->
+                <ScrollPane fitToWidth="true" hbarPolicy="AS_NEEDED" VBox.vgrow="ALWAYS">
+                    <HBox spacing="14">
+                        <padding><Insets top="4" right="2" bottom="4" left="2"/></padding>
+
+                        <!-- 1. 입고 정보 — 4섹션 비율 2:1:1:1 (입고가 2배). 모든 섹션 hgrow=ALWAYS 로 폭에 비례해 함께 확장 -->
+                        <VBox spacing="8" HBox.hgrow="ALWAYS" minWidth="480" prefWidth="520">
+                            <Label text="1. 입고 정보" styleClass="section-title"/>
+                            <GridPane hgap="6" vgap="6">
+                                <columnConstraints>
+                                    <ColumnConstraints minWidth="80"  prefWidth="80"/>
+                                    <ColumnConstraints hgrow="ALWAYS" prefWidth="160"/>
+                                    <ColumnConstraints minWidth="80"  prefWidth="80"/>
+                                    <ColumnConstraints hgrow="ALWAYS" prefWidth="160"/>
+                                </columnConstraints>
+                                <rowConstraints>
+                                    <RowConstraints/><RowConstraints/><RowConstraints/>
+                                    <RowConstraints/><RowConstraints/><RowConstraints/>
+                                    <RowConstraints/><RowConstraints/>
+                                </rowConstraints>
+
+                                <Label text="입고번호"     GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                                <TextField fx:id="intakeNoField" editable="false"
+                                           GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                                <Label text="입고일*"      GridPane.columnIndex="2" GridPane.rowIndex="0"/>
+                                <DatePicker fx:id="intakeDatePicker" maxWidth="Infinity"
+                                            GridPane.columnIndex="3" GridPane.rowIndex="0"/>
+
+                                <Label text="차량명*"      GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                                <TextField fx:id="vehicleNameField"
+                                           GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                                <Label text="차량번호*"    GridPane.columnIndex="2" GridPane.rowIndex="1"/>
+                                <TextField fx:id="vehicleNumberField" promptText="예: 12가3456"
+                                           GridPane.columnIndex="3" GridPane.rowIndex="1"/>
+
+                                <Label text="전화번호"     GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                                <TextField fx:id="phoneField" promptText="010-0000-0000"
+                                           GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                                <Label text="수리구분*"    GridPane.columnIndex="2" GridPane.rowIndex="2"/>
+                                <ChoiceBox fx:id="repairTypeChoice" maxWidth="Infinity"
+                                           GridPane.columnIndex="3" GridPane.rowIndex="2"/>
+
+                                <Label text="사고유형"     GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                                <HBox spacing="8" GridPane.columnIndex="1" GridPane.rowIndex="3" GridPane.columnSpan="3">
+                                    <CheckBox fx:id="cbSelf"     text="자차"/>
+                                    <CheckBox fx:id="cbOpponent" text="대물"/>
+                                    <CheckBox fx:id="cbGeneral"  text="일반수리"/>
+                                    <CheckBox fx:id="cbFault"    text="과실"/>
+                                </HBox>
+
+                                <Label text="출고일"       GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                                <DatePicker fx:id="releaseDatePicker" maxWidth="Infinity"
+                                            GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+                                <Label text="자기부담금"   GridPane.columnIndex="2" GridPane.rowIndex="4"/>
+                                <TextField fx:id="selfPayAmountField"
+                                           GridPane.columnIndex="3" GridPane.rowIndex="4"/>
+
+                                <Label text="자부담수납일" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
+                                <DatePicker fx:id="selfPayDatePicker" maxWidth="Infinity"
+                                            GridPane.columnIndex="1" GridPane.rowIndex="5"/>
+
+                                <Label text="견인기사"     GridPane.columnIndex="0" GridPane.rowIndex="6"/>
+                                <TextField fx:id="towDriverField"
+                                           GridPane.columnIndex="1" GridPane.rowIndex="6"/>
+                                <Label text="견인금액"     GridPane.columnIndex="2" GridPane.rowIndex="6"/>
+                                <TextField fx:id="towAmountField"
+                                           GridPane.columnIndex="3" GridPane.rowIndex="6"/>
+
+                                <Label text="메모"         GridPane.columnIndex="0" GridPane.rowIndex="7"/>
+                                <TextArea fx:id="memoArea" prefRowCount="2"
+                                          GridPane.columnIndex="1" GridPane.rowIndex="7" GridPane.columnSpan="3"/>
+                            </GridPane>
+                        </VBox>
+
+                        <Separator orientation="VERTICAL"/>
+
+                        <!-- 2. 자차 보험청구 -->
+                        <VBox spacing="8" HBox.hgrow="ALWAYS" minWidth="240" prefWidth="260">
+                            <HBox spacing="10">
+                                <Label text="2. 자차 보험청구" styleClass="section-title"/>
+                                <CheckBox fx:id="useOwnClaimCheck" text="자차 청구 입력"/>
+                            </HBox>
+                            <GridPane fx:id="ownClaimGrid" hgap="6" vgap="6">
+                                <columnConstraints>
+                                    <ColumnConstraints minWidth="80"  prefWidth="80"/>
+                                    <ColumnConstraints hgrow="ALWAYS" prefWidth="140"/>
+                                </columnConstraints>
+                                <rowConstraints>
+                                    <RowConstraints/><RowConstraints/><RowConstraints/>
+                                    <RowConstraints/><RowConstraints/>
+                                </rowConstraints>
+
+                                <Label text="보험사"       GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                                <ComboBox fx:id="ownCompanyCombo" editable="true" maxWidth="Infinity"
+                                          GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+
+                                <Label text="청구일"       GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                                <DatePicker fx:id="ownClaimDatePicker" maxWidth="Infinity"
+                                            GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+                                <Label text="청구액"       GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                                <TextField fx:id="ownClaimAmountField"
+                                           GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+
+                                <Label text="실수령액"     GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                                <TextField fx:id="ownReceivedAmountField"
+                                           GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+
+                                <Label text="입금일"       GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                                <DatePicker fx:id="ownReceivedDatePicker" maxWidth="Infinity"
+                                            GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+                            </GridPane>
+                            <TextArea fx:id="ownClaimMemoArea" prefRowCount="1" promptText="자차 청구 메모"/>
+                        </VBox>
+
+                        <Separator orientation="VERTICAL"/>
+
+                        <!-- 3. 대물 보험청구 -->
+                        <VBox spacing="8" HBox.hgrow="ALWAYS" minWidth="240" prefWidth="260">
+                            <HBox spacing="10">
+                                <Label text="3. 대물 보험청구" styleClass="section-title"/>
+                                <CheckBox fx:id="useOpponentClaimCheck" text="상대 청구 입력"/>
+                            </HBox>
+                            <GridPane fx:id="opponentClaimGrid" hgap="6" vgap="6">
+                                <columnConstraints>
+                                    <ColumnConstraints minWidth="80"  prefWidth="80"/>
+                                    <ColumnConstraints hgrow="ALWAYS" prefWidth="140"/>
+                                </columnConstraints>
+                                <rowConstraints>
+                                    <RowConstraints/><RowConstraints/><RowConstraints/>
+                                    <RowConstraints/><RowConstraints/>
+                                </rowConstraints>
+
+                                <Label text="보험사"       GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                                <ComboBox fx:id="opponentCompanyCombo" editable="true" maxWidth="Infinity"
+                                          GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+
+                                <Label text="청구일"       GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                                <DatePicker fx:id="opponentClaimDatePicker" maxWidth="Infinity"
+                                            GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+                                <Label text="청구액"       GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                                <TextField fx:id="opponentClaimAmountField"
+                                           GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+
+                                <Label text="실수령액"     GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                                <TextField fx:id="opponentReceivedAmountField"
+                                           GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+
+                                <Label text="입금일"       GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                                <DatePicker fx:id="opponentReceivedDatePicker" maxWidth="Infinity"
+                                            GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+                            </GridPane>
+                            <TextArea fx:id="opponentClaimMemoArea" prefRowCount="1" promptText="대물 청구 메모"/>
+                        </VBox>
+
+                        <Separator orientation="VERTICAL"/>
+
+                        <!-- 4. 대차 -->
+                        <VBox spacing="8" HBox.hgrow="ALWAYS" minWidth="240" prefWidth="260">
+                            <HBox spacing="10">
+                                <Label text="4. 대차" styleClass="section-title"/>
+                                <CheckBox fx:id="useRentalCheck" text="대차 등록"/>
+                            </HBox>
+                            <GridPane fx:id="rentalGrid" hgap="6" vgap="6">
+                                <columnConstraints>
+                                    <ColumnConstraints minWidth="80"  prefWidth="80"/>
+                                    <ColumnConstraints hgrow="ALWAYS" prefWidth="140"/>
+                                </columnConstraints>
+                                <rowConstraints>
+                                    <RowConstraints/><RowConstraints/><RowConstraints/>
+                                </rowConstraints>
+
+                                <Label text="대차차량*"    GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                                <ComboBox fx:id="rentalVehicleCombo" maxWidth="Infinity"
+                                          GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+
+                                <Label text="시작일*"      GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                                <DatePicker fx:id="rentalStartPicker" maxWidth="Infinity"
+                                            GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+
+                                <Label text="종료일"       GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                                <DatePicker fx:id="rentalEndPicker" maxWidth="Infinity"
+                                            GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                            </GridPane>
+                            <TextArea fx:id="rentalMemoArea" prefRowCount="1" promptText="대차 메모"/>
+                            <Label fx:id="rentalNotice" text="" styleClass="hint"/>
+                        </VBox>
                     </HBox>
+                </ScrollPane>
 
-                    <!-- 1. 입고 정보 -->
-                    <Label text="1. 입고 정보" styleClass="section-title"/>
-                    <GridPane hgap="8" vgap="8">
-                        <columnConstraints>
-                            <ColumnConstraints minWidth="90"  prefWidth="90"/>
-                            <ColumnConstraints hgrow="ALWAYS" prefWidth="200"/>
-                            <ColumnConstraints minWidth="90"  prefWidth="90"/>
-                            <ColumnConstraints hgrow="ALWAYS" prefWidth="200"/>
-                        </columnConstraints>
-                        <rowConstraints>
-                            <RowConstraints/><RowConstraints/><RowConstraints/>
-                            <RowConstraints/><RowConstraints/><RowConstraints/>
-                            <RowConstraints/><RowConstraints/>
-                        </rowConstraints>
+                <Separator/>
 
-                        <Label text="입고번호"     GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-                        <TextField fx:id="intakeNoField" editable="false"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="0"/>
-                        <Label text="입고일*"      GridPane.columnIndex="2" GridPane.rowIndex="0"/>
-                        <HBox spacing="6" alignment="CENTER_LEFT"
-                              GridPane.columnIndex="3" GridPane.rowIndex="0">
-                            <DatePicker fx:id="intakeDatePicker" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
-                            <CheckBox fx:id="cbIntakeDateToday" text="오늘"/>
-                        </HBox>
-
-                        <Label text="차량명*"      GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-                        <TextField fx:id="vehicleNameField"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="1"/>
-                        <Label text="차량번호*"    GridPane.columnIndex="2" GridPane.rowIndex="1"/>
-                        <TextField fx:id="vehicleNumberField" promptText="예: 12가3456"
-                                   GridPane.columnIndex="3" GridPane.rowIndex="1"/>
-
-                        <Label text="전화번호"     GridPane.columnIndex="0" GridPane.rowIndex="2"/>
-                        <TextField fx:id="phoneField" promptText="010-0000-0000"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="2"/>
-                        <Label text="수리구분*"    GridPane.columnIndex="2" GridPane.rowIndex="2"/>
-                        <ChoiceBox fx:id="repairTypeChoice" maxWidth="Infinity"
-                                   GridPane.columnIndex="3" GridPane.rowIndex="2"/>
-
-                        <Label text="사고유형"     GridPane.columnIndex="0" GridPane.rowIndex="3"/>
-                        <HBox spacing="8" GridPane.columnIndex="1" GridPane.rowIndex="3" GridPane.columnSpan="3">
-                            <CheckBox fx:id="cbSelf"     text="자차"/>
-                            <CheckBox fx:id="cbOpponent" text="대물"/>
-                            <CheckBox fx:id="cbGeneral"  text="일반수리"/>
-                            <CheckBox fx:id="cbFault"    text="과실"/>
-                        </HBox>
-
-                        <Label text="출고일"       GridPane.columnIndex="0" GridPane.rowIndex="4"/>
-                        <HBox spacing="6" alignment="CENTER_LEFT"
-                              GridPane.columnIndex="1" GridPane.rowIndex="4">
-                            <DatePicker fx:id="releaseDatePicker" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
-                            <CheckBox fx:id="cbReleaseDateToday" text="오늘"/>
-                        </HBox>
-                        <Label text="자기부담금"   GridPane.columnIndex="2" GridPane.rowIndex="4"/>
-                        <TextField fx:id="selfPayAmountField"
-                                   GridPane.columnIndex="3" GridPane.rowIndex="4"/>
-
-                        <Label text="자부담수납일" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
-                        <HBox spacing="6" alignment="CENTER_LEFT"
-                              GridPane.columnIndex="1" GridPane.rowIndex="5">
-                            <DatePicker fx:id="selfPayDatePicker" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
-                            <CheckBox fx:id="cbSelfPayDateToday" text="오늘"/>
-                        </HBox>
-
-                        <Label text="견인기사"     GridPane.columnIndex="0" GridPane.rowIndex="6"/>
-                        <TextField fx:id="towDriverField"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="6"/>
-                        <Label text="견인금액"     GridPane.columnIndex="2" GridPane.rowIndex="6"/>
-                        <TextField fx:id="towAmountField"
-                                   GridPane.columnIndex="3" GridPane.rowIndex="6"/>
-
-                        <Label text="메모"         GridPane.columnIndex="0" GridPane.rowIndex="7"/>
-                        <TextArea fx:id="memoArea" prefRowCount="2"
-                                  GridPane.columnIndex="1" GridPane.rowIndex="7" GridPane.columnSpan="3"/>
-                    </GridPane>
-
-                    <Separator/>
-
-                    <!-- 2. 대차 -->
-                    <HBox spacing="10">
-                        <Label text="2. 대차" styleClass="section-title"/>
-                        <CheckBox fx:id="useRentalCheck" text="대차 등록"/>
-                    </HBox>
-                    <GridPane fx:id="rentalGrid" hgap="8" vgap="8">
-                        <columnConstraints>
-                            <ColumnConstraints minWidth="90"  prefWidth="90"/>
-                            <ColumnConstraints hgrow="ALWAYS" prefWidth="200"/>
-                            <ColumnConstraints minWidth="90"  prefWidth="90"/>
-                            <ColumnConstraints hgrow="ALWAYS" prefWidth="200"/>
-                        </columnConstraints>
-                        <rowConstraints>
-                            <RowConstraints/><RowConstraints/><RowConstraints/>
-                        </rowConstraints>
-
-                        <Label text="대차차량*"    GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-                        <ComboBox fx:id="rentalVehicleCombo" maxWidth="Infinity"
-                                  GridPane.columnIndex="1" GridPane.rowIndex="0" GridPane.columnSpan="3"/>
-
-                        <Label text="시작일*"      GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-                        <HBox spacing="6" alignment="CENTER_LEFT"
-                              GridPane.columnIndex="1" GridPane.rowIndex="1">
-                            <DatePicker fx:id="rentalStartPicker" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
-                            <CheckBox fx:id="cbRentalStartToday" text="오늘"/>
-                        </HBox>
-                        <Label text="종료일"       GridPane.columnIndex="2" GridPane.rowIndex="1"/>
-                        <HBox spacing="6" alignment="CENTER_LEFT"
-                              GridPane.columnIndex="3" GridPane.rowIndex="1">
-                            <DatePicker fx:id="rentalEndPicker" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
-                            <CheckBox fx:id="cbRentalEndToday" text="오늘"/>
-                        </HBox>
-
-                        <Label text="메모"         GridPane.columnIndex="0" GridPane.rowIndex="2"/>
-                        <TextArea fx:id="rentalMemoArea" prefRowCount="2"
-                                  GridPane.columnIndex="1" GridPane.rowIndex="2" GridPane.columnSpan="3"/>
-                    </GridPane>
-                    <Label fx:id="rentalNotice" text="" styleClass="hint"/>
-
-                    <Separator/>
-
-                    <!-- 3. 자차 보험청구 -->
-                    <HBox spacing="10">
-                        <Label text="3. 자차 보험청구" styleClass="section-title"/>
-                        <CheckBox fx:id="useOwnClaimCheck" text="자차 청구 입력"/>
-                    </HBox>
-                    <GridPane fx:id="ownClaimGrid" hgap="8" vgap="8">
-                        <columnConstraints>
-                            <ColumnConstraints minWidth="90"  prefWidth="90"/>
-                            <ColumnConstraints hgrow="ALWAYS" prefWidth="200"/>
-                            <ColumnConstraints minWidth="90"  prefWidth="90"/>
-                            <ColumnConstraints hgrow="ALWAYS" prefWidth="200"/>
-                        </columnConstraints>
-                        <rowConstraints>
-                            <RowConstraints/><RowConstraints/><RowConstraints/>
-                            <RowConstraints/>
-                        </rowConstraints>
-
-                        <Label text="보험사"       GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-                        <ComboBox fx:id="ownCompanyCombo" editable="true" maxWidth="Infinity"
-                                  GridPane.columnIndex="1" GridPane.rowIndex="0"/>
-                        <Label text="청구일"       GridPane.columnIndex="2" GridPane.rowIndex="0"/>
-                        <HBox spacing="6" alignment="CENTER_LEFT"
-                              GridPane.columnIndex="3" GridPane.rowIndex="0">
-                            <DatePicker fx:id="ownClaimDatePicker" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
-                            <CheckBox fx:id="cbOwnClaimDateToday" text="오늘"/>
-                        </HBox>
-
-                        <Label text="청구액"       GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-                        <TextField fx:id="ownClaimAmountField"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="1"/>
-                        <Label text="실수령액"     GridPane.columnIndex="2" GridPane.rowIndex="1"/>
-                        <TextField fx:id="ownReceivedAmountField"
-                                   GridPane.columnIndex="3" GridPane.rowIndex="1"/>
-
-                        <Label text="입금일"       GridPane.columnIndex="0" GridPane.rowIndex="2"/>
-                        <HBox spacing="6" alignment="CENTER_LEFT"
-                              GridPane.columnIndex="1" GridPane.rowIndex="2">
-                            <DatePicker fx:id="ownReceivedDatePicker" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
-                            <CheckBox fx:id="cbOwnReceivedDateToday" text="오늘"/>
-                        </HBox>
-
-                        <Label text="메모"         GridPane.columnIndex="0" GridPane.rowIndex="3"/>
-                        <TextArea fx:id="ownClaimMemoArea" prefRowCount="2"
-                                  GridPane.columnIndex="1" GridPane.rowIndex="3" GridPane.columnSpan="3"/>
-                    </GridPane>
-
-                    <Separator/>
-
-                    <!-- 4. 상대 보험청구 -->
-                    <HBox spacing="10">
-                        <Label text="4. 대물 보험청구" styleClass="section-title"/>
-                        <CheckBox fx:id="useOpponentClaimCheck" text="상대 청구 입력"/>
-                    </HBox>
-                    <GridPane fx:id="opponentClaimGrid" hgap="8" vgap="8">
-                        <columnConstraints>
-                            <ColumnConstraints minWidth="90"  prefWidth="90"/>
-                            <ColumnConstraints hgrow="ALWAYS" prefWidth="200"/>
-                            <ColumnConstraints minWidth="90"  prefWidth="90"/>
-                            <ColumnConstraints hgrow="ALWAYS" prefWidth="200"/>
-                        </columnConstraints>
-                        <rowConstraints>
-                            <RowConstraints/><RowConstraints/><RowConstraints/>
-                            <RowConstraints/>
-                        </rowConstraints>
-
-                        <Label text="보험사"       GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-                        <ComboBox fx:id="opponentCompanyCombo" editable="true" maxWidth="Infinity"
-                                  GridPane.columnIndex="1" GridPane.rowIndex="0"/>
-                        <Label text="청구일"       GridPane.columnIndex="2" GridPane.rowIndex="0"/>
-                        <HBox spacing="6" alignment="CENTER_LEFT"
-                              GridPane.columnIndex="3" GridPane.rowIndex="0">
-                            <DatePicker fx:id="opponentClaimDatePicker" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
-                            <CheckBox fx:id="cbOpponentClaimDateToday" text="오늘"/>
-                        </HBox>
-
-                        <Label text="청구액"       GridPane.columnIndex="0" GridPane.rowIndex="1"/>
-                        <TextField fx:id="opponentClaimAmountField"
-                                   GridPane.columnIndex="1" GridPane.rowIndex="1"/>
-                        <Label text="실수령액"     GridPane.columnIndex="2" GridPane.rowIndex="1"/>
-                        <TextField fx:id="opponentReceivedAmountField"
-                                   GridPane.columnIndex="3" GridPane.rowIndex="1"/>
-
-                        <Label text="입금일"       GridPane.columnIndex="0" GridPane.rowIndex="2"/>
-                        <HBox spacing="6" alignment="CENTER_LEFT"
-                              GridPane.columnIndex="1" GridPane.rowIndex="2">
-                            <DatePicker fx:id="opponentReceivedDatePicker" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
-                            <CheckBox fx:id="cbOpponentReceivedDateToday" text="오늘"/>
-                        </HBox>
-
-                        <Label text="메모"         GridPane.columnIndex="0" GridPane.rowIndex="3"/>
-                        <TextArea fx:id="opponentClaimMemoArea" prefRowCount="2"
-                                  GridPane.columnIndex="1" GridPane.rowIndex="3" GridPane.columnSpan="3"/>
-                    </GridPane>
-
-                    <Separator/>
-
-                    <HBox spacing="8">
-                        <Button text="저장"   onAction="#onSave"      styleClass="primary" prefWidth="120"/>
-                        <Button text="초기화" onAction="#onClear"     prefWidth="120"/>
-                        <Button text="닫기"   onAction="#onCloseForm" prefWidth="120"/>
-                    </HBox>
-                </VBox>
-            </ScrollPane>
+                <HBox spacing="8">
+                    <Button text="저장"   onAction="#onSave"      styleClass="primary" prefWidth="120"/>
+                    <Button text="초기화" onAction="#onClear"     prefWidth="120"/>
+                    <Button text="닫기"   onAction="#onCloseForm" prefWidth="120"/>
+                </HBox>
+            </VBox>
 
         </SplitPane>
     </center>

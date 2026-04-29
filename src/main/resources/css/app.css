@@ -171,6 +171,71 @@
     -fx-border-width: 0 1 1 0;
 }
 
+/* ───── 테이블 격자선 (세로선 + row 경계) ───── */
+
+/* 컬럼 헤더에 세로 구분선 */
+.table-view .column-header {
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 0 1 1 0;
+}
+
+/* 데이터 셀에 세로 구분선 */
+.table-view .table-row-cell .table-cell {
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 0 1 0 0;
+    -fx-padding: 4 8 4 8;
+}
+
+/* row 간 가로 경계선 강조 */
+.table-view .table-row-cell {
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 0 0 1 0;
+    -fx-cell-size: 30;
+}
+
+/* zebra 줄무늬 (홀수/짝수 row 색 구분) */
+.table-view .table-row-cell:odd {
+    -fx-background-color: -color-bg-subtle;
+}
+
+.table-view .table-row-cell:even {
+    -fx-background-color: -color-bg-default;
+}
+
+/* 빈 row 는 격자선·배경 모두 제거 */
+.table-view .table-row-cell:empty {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.table-view .table-row-cell:empty .table-cell {
+    -fx-border-color: transparent;
+}
+
+/* 선택된 row 강조 — 포커스 여부 무관하게 선명한 파란색 */
+.table-view .table-row-cell:selected,
+.table-view .table-row-cell:selected:odd,
+.table-view .table-row-cell:selected:even,
+.table-view:focused .table-row-cell:selected {
+    -fx-background-color: #2563eb;       /* blue-600 */
+    -fx-table-cell-border-color: #1d4ed8;
+}
+
+.table-view .table-row-cell:selected .table-cell,
+.table-view:focused .table-row-cell:selected .table-cell {
+    -fx-text-fill: white;
+    -fx-border-color: #1d4ed8;            /* blue-700 — 세로선도 진한 톤으로 */
+}
+
+/* 마우스 hover 시 살짝 강조 (선택된 row 는 제외) */
+.table-view .table-row-cell:hover:filled {
+    -fx-background-color: #dbeafe;        /* blue-100 */
+}
+
+.table-view .table-row-cell:hover:filled:selected {
+    -fx-background-color: #2563eb;
+}
+
 /* ───── 버튼 강조 ───── */
 
 .button.primary {

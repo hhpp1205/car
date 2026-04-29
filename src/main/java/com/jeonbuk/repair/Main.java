@@ -44,6 +44,11 @@ public class Main extends Application {
     }
 
     public static void main(String[] args) {
+        // 레이아웃 스냅샷 모드 — `./gradlew run --args="snapshot"`
+        if (args.length > 0 && "snapshot".equals(args[0])) {
+            Application.launch(com.jeonbuk.repair.util.LayoutSnapshot.class, args);
+            return;
+        }
         launch(args);
     }
 }
