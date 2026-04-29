@@ -509,6 +509,16 @@ public class CustomerIntakeController {
     }
 
     /**
+     * 외부 화면(보험사별 통계 등)에서 특정 입고를 노출하고자 할 때 호출.
+     * 데이터 새로고침 후 해당 입고번호의 행을 선택·스크롤한다 — selection listener 가 폼을 열어줌.
+     */
+    public void revealByIntakeNo(String intakeNo) {
+        if (intakeNo == null || intakeNo.isBlank()) return;
+        reload();
+        selectByIntakeNo(intakeNo);
+    }
+
+    /**
      * 입고 id → 가장 최근 대차차량 이름 맵 갱신.
      * findAll() 이 rentalStartDate desc, id desc 정렬이라 같은 입고의 첫 항목이 가장 최근.
      */

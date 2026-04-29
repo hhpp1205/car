@@ -24,9 +24,10 @@
                 <VBox.margin><Insets top="14" bottom="10"/></VBox.margin>
             </Region>
 
-            <Button fx:id="navDashboard" text="대시보드"     styleClass="nav-button" maxWidth="Infinity" onAction="#onNavDashboard"/>
-            <Button fx:id="navIntake"    text="입/출고관리" styleClass="nav-button" maxWidth="Infinity" onAction="#onNavIntake"/>
-            <Button fx:id="navRental"    text="대차관리"    styleClass="nav-button" maxWidth="Infinity" onAction="#onNavRental"/>
+            <Button fx:id="navDashboard" text="대시보드"        styleClass="nav-button" maxWidth="Infinity" onAction="#onNavDashboard"/>
+            <Button fx:id="navIntake"    text="입/출고관리"    styleClass="nav-button" maxWidth="Infinity" onAction="#onNavIntake"/>
+            <Button fx:id="navRental"    text="대차관리"       styleClass="nav-button" maxWidth="Infinity" onAction="#onNavRental"/>
+            <Button fx:id="navStats"     text="보험사별 통계" styleClass="nav-button" maxWidth="Infinity" onAction="#onNavStats"/>
 
             <Region VBox.vgrow="ALWAYS"/>
 

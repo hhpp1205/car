@@ -19,6 +19,7 @@ public final class ServiceRegistry {
     private final InsuranceClaimService   claimService    = new InsuranceClaimService(claimRepo);
     private final RentalService           rentalService   = new RentalService(rentalRepo, vehicleRepo);
     private final IntakeWorkflowService   workflowService = new IntakeWorkflowService(intakeRepo);
+    private final InsuranceStatsService   statsService    = new InsuranceStatsService(claimRepo, claimService);
 
     private ServiceRegistry() {}
 
@@ -28,6 +29,7 @@ public final class ServiceRegistry {
     public InsuranceClaimService   claimService()     { return claimService; }
     public RentalService           rentalService()    { return rentalService; }
     public IntakeWorkflowService   workflowService()  { return workflowService; }
+    public InsuranceStatsService   statsService()     { return statsService; }
     public InsuranceCompanyRepository companyRepo()   { return companyRepo; }
     public RentalVehicleRepository    vehicleRepo()   { return vehicleRepo; }
     public CustomerIntakeRepository   intakeRepo()    { return intakeRepo; }

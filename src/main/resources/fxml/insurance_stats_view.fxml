@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.BarChart?>
+<?import javafx.scene.chart.CategoryAxis?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.jeonbuk.repair.controller.InsuranceStatsController"
+      styleClass="page" spacing="18">
+    <padding><Insets top="28" right="32" bottom="28" left="32"/></padding>
+
+    <!-- 제목 -->
+    <HBox alignment="CENTER_LEFT" spacing="12">
+        <Label text="보험사별 통계" styleClass="page-title"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="새로고침" styleClass="button-outlined" onAction="#onRefresh"/>
+    </HBox>
+
+    <!-- 필터 바 -->
+    <HBox spacing="10" alignment="CENTER_LEFT" styleClass="filter-bar">
+        <Label text="기간 (청구일):" styleClass="filter-label"/>
+        <DatePicker fx:id="fromDatePicker" prefWidth="140"/>
+        <Label text="~"/>
+        <DatePicker fx:id="toDatePicker" prefWidth="140"/>
+        <Region prefWidth="16"/>
+        <Label text="청구 구분:" styleClass="filter-label"/>
+        <ChoiceBox fx:id="sideChoice" prefWidth="100"/>
+        <Region prefWidth="16"/>
+        <CheckBox fx:id="hideEmptyCheck" text="실적 없는 보험사 숨김" selected="true"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="적용" onAction="#onApplyFilter" styleClass="primary"/>
+    </HBox>
+
+    <!-- 요약 카드 4개 -->
+    <HBox spacing="16" styleClass="card-grid">
+        <VBox styleClass="card, card-accent-blue" HBox.hgrow="ALWAYS">
+            <Label text="청구 건수"          styleClass="card-label"/>
+            <Label fx:id="totalCountValue"   styleClass="card-number" text="0"/>
+            <Label                            styleClass="card-footnote" text="필터 조건 내 청구 행 수"/>
+        </VBox>
+        <VBox styleClass="card, card-accent-amber" HBox.hgrow="ALWAYS">
+            <Label text="총 청구액"          styleClass="card-label"/>
+            <Label fx:id="totalClaimValue"   styleClass="card-number" text="0 원"/>
+            <Label                            styleClass="card-footnote" text="청구액 합계"/>
+        </VBox>
+        <VBox styleClass="card, card-accent-green" HBox.hgrow="ALWAYS">
+            <Label text="총 수령액"          styleClass="card-label"/>
+            <Label fx:id="totalReceivedValue" styleClass="card-number" text="0 원"/>
+            <Label fx:id="totalReceiveRate"   styleClass="card-footnote" text="수령률 0%"/>
+        </VBox>
+        <VBox styleClass="card, card-accent-red" HBox.hgrow="ALWAYS">
+            <Label text="총 미수금"          styleClass="card-label"/>
+            <Label fx:id="totalOutstandingValue" styleClass="card-number" text="0 원"/>
+            <Label fx:id="totalOutstandingFootnote" styleClass="card-footnote" text="청구 - 수령"/>
+        </VBox>
+    </HBox>
+
+    <!-- 메인 — 테이블 + 차트 -->
+    <SplitPane orientation="VERTICAL" dividerPositions="0.55" VBox.vgrow="ALWAYS">
+
+        <TableView fx:id="statsTable">
+            <columns>
+                <TableColumn fx:id="colCompany"      text="보험사"             prefWidth="130"/>
+                <TableColumn fx:id="colCount"        text="건수"               prefWidth="70"/>
+                <TableColumn fx:id="colClaim"        text="청구액"             prefWidth="130"/>
+                <TableColumn fx:id="colReceived"     text="수령액"             prefWidth="130"/>
+                <TableColumn fx:id="colOutstanding"  text="미수금"             prefWidth="130"/>
+                <TableColumn fx:id="colReceiveRate"  text="수령률"             prefWidth="80"/>
+                <TableColumn fx:id="colAvgDays"      text="평균 수령일수"      prefWidth="110"/>
+                <TableColumn fx:id="colOverdue"      text="30일 경과 미수령"   prefWidth="130"/>
+            </columns>
+            <placeholder>
+                <Label text="필터 조건에 해당하는 청구가 없습니다."/>
+            </placeholder>
+        </TableView>
+
+        <BarChart fx:id="chart" legendVisible="true" animated="false">
+            <xAxis>
+                <CategoryAxis fx:id="chartXAxis" label="보험사"/>
+            </xAxis>
+            <yAxis>
+                <NumberAxis fx:id="chartYAxis" label="금액 (원)"/>
+            </yAxis>
+        </BarChart>
+
+    </SplitPane>
+</VBox>

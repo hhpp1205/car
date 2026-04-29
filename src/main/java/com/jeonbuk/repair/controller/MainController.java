@@ -12,14 +12,19 @@ public class MainController {
     @FXML private Button navDashboard;
     @FXML private Button navIntake;
     @FXML private Button navRental;
+    @FXML private Button navStats;
 
     private Parent dashboardView;
     private DashboardController dashboardCtrl;
 
     private Parent intakeView;
+    private CustomerIntakeController intakeCtrl;
 
     private Parent rentalView;
     private RentalHistoryController rentalCtrl;
+
+    private Parent statsView;
+    private InsuranceStatsController statsCtrl;
 
     private Button activeNav;
 
@@ -30,14 +35,28 @@ public class MainController {
         dashboardView = dash.root();
         dashboardCtrl = dash.controller();
 
-        intakeView = ViewLoader.load("/fxml/customer_intake_view.fxml");
+        ViewLoader.Loaded<CustomerIntakeController> intake = ViewLoader.loadWithController("/fxml/customer_intake_view.fxml");
+        intakeView = intake.root();
+        intakeCtrl = intake.controller();
 
         ViewLoader.Loaded<RentalHistoryController> rental = ViewLoader.loadWithController("/fxml/rental_history_view.fxml");
         rentalView = rental.root();
         rentalCtrl = rental.controller();
 
+        ViewLoader.Loaded<InsuranceStatsController> stats = ViewLoader.loadWithController("/fxml/insurance_stats_view.fxml");
+        statsView = stats.root();
+        statsCtrl = stats.controller();
+        // 통계 화면 → 입/출고관리 점프 콜백 주입
+        statsCtrl.setIntakeNavigator(this::navigateToIntake);
+
         // 첫 진입은 대시보드
         showDashboard();
+    }
+
+    /** 통계 상세 다이얼로그에서 입고번호를 클릭했을 때 호출 — 입/출고관리로 전환 후 해당 행 노출. */
+    public void navigateToIntake(String intakeNo) {
+        intakeCtrl.revealByIntakeNo(intakeNo);
+        switchTo(intakeView, navIntake);
     }
 
     @FXML private void onNavDashboard() { showDashboard(); }
@@ -51,6 +70,12 @@ public class MainController {
     private void onNavRental() {
         rentalCtrl.refreshIntakeList();
         switchTo(rentalView, navRental);
+    }
+
+    @FXML
+    private void onNavStats() {
+        statsCtrl.refresh();
+        switchTo(statsView, navStats);
     }
 
     private void showDashboard() {
