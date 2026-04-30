@@ -35,7 +35,8 @@ public class InsuranceStatsService {
      * @param sideFilter  자차/상대 필터. null 이면 전체.
      */
     public List<CompanyStat> aggregateByCompany(LocalDate from, LocalDate to, ClaimSide sideFilter) {
-        return aggregate(claimRepo.findAll(), from, to, sideFilter);
+        // 기간/측면 필터는 DB 에서 적용. 이후 보험사별 group-by 와 평균/overdue 계산은 메모리에서.
+        return aggregate(claimRepo.findFiltered(from, to, sideFilter), from, to, sideFilter);
     }
 
     /**
@@ -48,7 +49,8 @@ public class InsuranceStatsService {
     public List<InsuranceClaim> findClaimsForCompany(String company,
                                                      LocalDate from, LocalDate to,
                                                      ClaimSide sideFilter) {
-        return filterClaimsForCompany(claimRepo.findAll(), company, from, to, sideFilter);
+        return filterClaimsForCompany(claimRepo.findFiltered(from, to, sideFilter),
+                company, from, to, sideFilter);
     }
 
     /** 단위 테스트용 — fake claim list 직접 주입. */

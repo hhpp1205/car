@@ -26,8 +26,26 @@ public final class DatabaseInitializer {
 
     private static final Logger log = LoggerFactory.getLogger(DatabaseInitializer.class);
 
-    /** SQLite-JDBC 의 timestamp 처리를 텍스트 모드로 강제 — Hibernate write/read 형식 일치. */
-    private static final String URL_OPTIONS = "?foreign_keys=on&date_class=TEXT&date_string_format=yyyy-MM-dd HH:mm:ss.SSS";
+    /**
+     * SQLite-JDBC URL 파라미터.
+     * <ul>
+     *   <li>{@code foreign_keys=on} — FK 제약 활성화</li>
+     *   <li>{@code date_class/string_format} — Hibernate write/read 형식 일치</li>
+     *   <li>{@code journal_mode=WAL} — Write-Ahead Logging. 쓰기/읽기 동시성 ↑, 트랜잭션 commit 비용 ↓</li>
+     *   <li>{@code synchronous=NORMAL} — 매 트랜잭션 fsync 대신 체크포인트에서만 fsync.
+     *       단일 사용자·일일 백업 환경에서 안전하면서 쓰기 성능 수배 향상</li>
+     *   <li>{@code cache_size=-20000} — 음수면 KB 단위 (≈20MB). 자주 쓰는 페이지 캐시</li>
+     *   <li>{@code temp_store=MEMORY} — 임시 테이블/인덱스를 디스크 대신 메모리에</li>
+     *   <li>{@code busy_timeout=5000} — 잠금 충돌 시 5초까지 대기 후 SQLITE_BUSY (백업·WAL 체크포인트 동시 진행 시 안전망)</li>
+     * </ul>
+     */
+    private static final String URL_OPTIONS = "?foreign_keys=on"
+            + "&date_class=TEXT&date_string_format=yyyy-MM-dd HH:mm:ss.SSS"
+            + "&journal_mode=WAL"
+            + "&synchronous=NORMAL"
+            + "&cache_size=-20000"
+            + "&temp_store=MEMORY"
+            + "&busy_timeout=5000";
 
     /** classpath 의 db/migration 아래 V*.sql 들 (실행 순서 보장) */
     private static final List<String> MIGRATIONS = List.of(

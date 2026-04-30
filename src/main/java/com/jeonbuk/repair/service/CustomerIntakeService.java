@@ -90,42 +90,25 @@ public class CustomerIntakeService {
         public int total() { return processed + skipped + failures.size(); }
     }
 
-    /** 일괄 종결 — 한 건 실패해도 나머지 진행. 이미 종결된 건은 skipped. */
+    /** 일괄 종결 — 단일 트랜잭션의 SELECT 1 + UPDATE 1 로 처리. 이미 종결된 건은 skipped. */
     public BulkResult closeAll(Collection<Long> ids) {
-        return bulk(ids, this::close, /*targetIsClosed*/ true);
+        return bulk(ids, /*close*/ true);
     }
 
-    /** 일괄 종결취소 — 한 건 실패해도 나머지 진행. 이미 진행 중인 건은 skipped. */
+    /** 일괄 종결취소 — 단일 트랜잭션의 SELECT 1 + UPDATE 1 로 처리. 이미 진행 중인 건은 skipped. */
     public BulkResult reopenAll(Collection<Long> ids) {
-        return bulk(ids, this::reopen, /*targetIsClosed*/ false);
+        return bulk(ids, /*close*/ false);
     }
 
-    private BulkResult bulk(Collection<Long> ids,
-                            java.util.function.LongFunction<CustomerIntake> op,
-                            boolean targetIsClosed) {
-        int processed = 0;
-        int skipped = 0;
-        List<String> failures = new ArrayList<>();
-        if (ids == null) return new BulkResult(0, 0, failures);
-        for (Long id : ids) {
-            if (id == null) continue;
-            try {
-                CustomerIntake before = repo.findById(id).orElse(null);
-                if (before == null) {
-                    failures.add("id=" + id + ": 입고 정보를 찾을 수 없습니다.");
-                    continue;
-                }
-                if (before.isClosed() == targetIsClosed) {
-                    skipped++;
-                    continue;
-                }
-                op.apply(id);
-                processed++;
-            } catch (RuntimeException e) {
-                failures.add("id=" + id + ": " + e.getMessage());
-            }
+    private BulkResult bulk(Collection<Long> ids, boolean close) {
+        // SQLite TEXT 저장은 ms 정밀도 — in-memory ns 와 차이가 나면 재조회 시 값이 달라 보임.
+        LocalDateTime ts = LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS);
+        CustomerIntakeRepository.BulkClosedUpdate r = repo.bulkSetClosed(ids, close, ts);
+        List<String> failures = new ArrayList<>(r.missingIds().size());
+        for (Long id : r.missingIds()) {
+            failures.add("id=" + id + ": 입고 정보를 찾을 수 없습니다.");
         }
-        return new BulkResult(processed, skipped, failures);
+        return new BulkResult(r.processed(), r.skipped(), failures);
     }
 
     /**

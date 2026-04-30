@@ -18,6 +18,8 @@ import javafx.util.StringConverter;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Locale;
 
 public class RentalHistoryController {
 
@@ -32,8 +34,8 @@ public class RentalHistoryController {
     @FXML private TableColumn<RentalHistory, Long>      colDays;
     @FXML private TableColumn<RentalHistory, String>    colMemo;
 
-    @FXML private ChoiceBox<CustomerIntake> intakeChoice;
-    @FXML private ComboBox<RentalVehicle>   vehicleCombo;
+    @FXML private ComboBox<CustomerIntake> intakeChoice;
+    @FXML private ComboBox<RentalVehicle>  vehicleCombo;
     @FXML private DatePicker startDatePicker;
     @FXML private DatePicker endDatePicker;
     @FXML private CheckBox   cbStartDateToday;
@@ -42,6 +44,13 @@ public class RentalHistoryController {
 
     private final ObservableList<RentalHistory> data = FXCollections.observableArrayList();
     private RentalHistory editing;
+
+    /** 검색 가능한 ComboBox 의 백킹 캐시 — 화면 진입 시 1회 로드, 검색 시 메모리에서 필터링. */
+    private final ObservableList<CustomerIntake> intakeOptions = FXCollections.observableArrayList();
+    /** 검색 결과를 표시할 때 보이는 옵션 (intakeOptions 의 부분집합). */
+    private final ObservableList<CustomerIntake> intakeFiltered = FXCollections.observableArrayList();
+    /** ComboBox dropdown 에 표시할 최대 항목 수 — 너무 많으면 popup 이 무거워진다. */
+    private static final int INTAKE_DROPDOWN_LIMIT = 50;
 
     @FXML
     public void initialize() {
@@ -89,13 +98,7 @@ public class RentalHistoryController {
     }
 
     private void configureForm() {
-        intakeChoice.getItems().setAll(ServiceRegistry.get().intakeRepo().findAll());
-        intakeChoice.setConverter(new StringConverter<>() {
-            @Override public String toString(CustomerIntake i) {
-                return i == null ? "" : i.getIntakeNo() + " · " + i.getVehicleName() + " " + i.getVehicleNumber();
-            }
-            @Override public CustomerIntake fromString(String s) { return null; }
-        });
+        configureIntakeCombo();
 
         vehicleCombo.getItems().setAll(rentalService.listVehicles());
         vehicleCombo.setConverter(new StringConverter<>() {
@@ -114,6 +117,71 @@ public class RentalHistoryController {
         CustomerIntakeController.wireTodayCheck(cbEndDateToday,   endDatePicker);
     }
 
+    /**
+     * 검색 가능한 ComboBox 설정.
+     * <p>전체 입고 목록을 한 번 로드하고, 사용자가 editor 에 입력하면 메모리에서 부분 일치로 필터링.
+     * 드롭다운에는 최대 {@link #INTAKE_DROPDOWN_LIMIT} 건만 노출.
+     */
+    private void configureIntakeCombo() {
+        intakeOptions.setAll(ServiceRegistry.get().intakeRepo().findAll());
+        applyIntakeFilter("");
+
+        intakeChoice.setItems(intakeFiltered);
+        intakeChoice.setVisibleRowCount(12);
+
+        StringConverter<CustomerIntake> converter = new StringConverter<>() {
+            @Override public String toString(CustomerIntake i) {
+                return i == null ? "" : i.getIntakeNo() + " · " + i.getVehicleName() + " " + i.getVehicleNumber();
+            }
+            // editable ComboBox 의 텍스트 ↔ 값 매핑은 매칭 시도하지 않음 — 사용자 선택만 유효 값.
+            @Override public CustomerIntake fromString(String s) { return intakeChoice.getValue(); }
+        };
+        intakeChoice.setConverter(converter);
+
+        // 사용자가 editor 에 입력할 때마다 필터 갱신. setValue 로 인한 자동 갱신은 selectedText 비교로 회피.
+        intakeChoice.getEditor().textProperty().addListener((obs, oldText, newText) -> {
+            CustomerIntake selected = intakeChoice.getValue();
+            String selectedText = selected == null ? "" : converter.toString(selected);
+            if (selectedText.equals(newText)) return;
+            applyIntakeFilter(newText);
+            if (!intakeChoice.isShowing() && newText != null && !newText.isBlank()) {
+                intakeChoice.show();
+            }
+        });
+
+        // 사용자가 dropdown 화살표를 클릭해 펼칠 때 — 검색어가 없거나 현재 선택과 일치하면 전체 옵션 노출.
+        // (검색 후 선택했을 때 다음 열기에서 1건만 보이는 stale 상태 방지)
+        intakeChoice.setOnShowing(e -> {
+            CustomerIntake selected = intakeChoice.getValue();
+            String editorText = intakeChoice.getEditor().getText();
+            String selectedText = selected == null ? "" : converter.toString(selected);
+            if (editorText == null || editorText.isBlank() || selectedText.equals(editorText)) {
+                applyIntakeFilter("");
+            }
+        });
+    }
+
+    private void applyIntakeFilter(String keyword) {
+        String norm = keyword == null ? "" : keyword.trim().toLowerCase(Locale.ROOT);
+        List<CustomerIntake> matched = intakeOptions.stream()
+                .filter(i -> matchesIntake(i, norm))
+                .limit(INTAKE_DROPDOWN_LIMIT)
+                .toList();
+        intakeFiltered.setAll(matched);
+    }
+
+    private static boolean matchesIntake(CustomerIntake i, String lowerKeyword) {
+        if (lowerKeyword.isEmpty()) return true;
+        return containsIgnoreCase(i.getIntakeNo(), lowerKeyword)
+                || containsIgnoreCase(i.getVehicleName(), lowerKeyword)
+                || containsIgnoreCase(i.getVehicleNumber(), lowerKeyword)
+                || containsIgnoreCase(i.getPhone(), lowerKeyword);
+    }
+
+    private static boolean containsIgnoreCase(String haystack, String needleLower) {
+        return haystack != null && haystack.toLowerCase(Locale.ROOT).contains(needleLower);
+    }
+
     @FXML
     private void onReload() {
         refreshIntakeList();
@@ -123,9 +191,10 @@ public class RentalHistoryController {
     /** 탭 전환 등 외부 트리거에 의해 입고 목록과 대차 테이블을 다시 불러올 때 호출. */
     public void refreshIntakeList() {
         CustomerIntake selected = intakeChoice.getValue();
-        intakeChoice.getItems().setAll(ServiceRegistry.get().intakeRepo().findAll());
+        intakeOptions.setAll(ServiceRegistry.get().intakeRepo().findAll());
+        applyIntakeFilter(intakeChoice.getEditor().getText());
         if (selected != null) {
-            intakeChoice.getItems().stream()
+            intakeOptions.stream()
                     .filter(i -> i.getId().equals(selected.getId()))
                     .findFirst().ifPresent(intakeChoice::setValue);
         }
@@ -151,7 +220,8 @@ public class RentalHistoryController {
         editing = null;
         rentalTable.getSelectionModel().clearSelection();
         // 입고 목록 갱신 (다른 화면에서 새 입고 추가됐을 수도)
-        intakeChoice.getItems().setAll(ServiceRegistry.get().intakeRepo().findAll());
+        intakeOptions.setAll(ServiceRegistry.get().intakeRepo().findAll());
+        applyIntakeFilter("");
     }
 
     @FXML
@@ -196,8 +266,8 @@ public class RentalHistoryController {
 
     private void loadToForm(RentalHistory r) {
         editing = r;
-        // intakeChoice 안에 같은 id 의 객체가 있다면 그것을 선택
-        intakeChoice.getItems().stream()
+        // intakeOptions(전체 캐시) 에서 같은 id 객체를 찾아 선택. 검색 필터링은 무시.
+        intakeOptions.stream()
                 .filter(i -> i.getId().equals(r.getIntake().getId()))
                 .findFirst().ifPresent(intakeChoice::setValue);
 

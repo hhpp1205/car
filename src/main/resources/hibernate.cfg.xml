@@ -4,9 +4,13 @@
         "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
 <hibernate-configuration>
     <session-factory>
-        <!-- DB 연결 (data/repair.db) -->
+        <!--
+            DB 연결 (data/repair.db).
+            실제 URL 은 HibernateUtil.build() 가 DatabaseInitializer.jdbcUrl() 결과로 override 한다.
+            여기 값은 fallback. PRAGMA 파라미터는 DatabaseInitializer.URL_OPTIONS 참고.
+        -->
         <property name="hibernate.connection.driver_class">org.sqlite.JDBC</property>
-        <property name="hibernate.connection.url">jdbc:sqlite:data/repair.db?foreign_keys=on&amp;date_class=TEXT&amp;date_string_format=yyyy-MM-dd HH:mm:ss.SSS</property>
+        <property name="hibernate.connection.url">jdbc:sqlite:data/repair.db?foreign_keys=on&amp;date_class=TEXT&amp;date_string_format=yyyy-MM-dd HH:mm:ss.SSS&amp;journal_mode=WAL&amp;synchronous=NORMAL&amp;cache_size=-20000&amp;temp_store=MEMORY&amp;busy_timeout=5000</property>
         <property name="hibernate.connection.username"></property>
         <property name="hibernate.connection.password"></property>
 

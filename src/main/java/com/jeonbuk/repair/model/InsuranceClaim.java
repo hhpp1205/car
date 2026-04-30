@@ -17,8 +17,8 @@ public class InsuranceClaim {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 청구 목록 화면에서 입고번호를 표시해야 하므로 EAGER. */
-    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    /** LAZY — 입고를 함께 표시해야 하는 화면은 Repository 가 fetch join 으로 미리 로딩. */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "intake_id", nullable = false)
     private CustomerIntake intake;
 

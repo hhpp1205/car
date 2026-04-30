@@ -76,11 +76,13 @@ public class CustomerIntake {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt = LocalDateTime.now();
 
-    /** 진행상태 자동 산출에 늘 필요해서 EAGER. 단일 사용자·소규모 DB라 성능 영향 미미. */
-    @OneToMany(mappedBy = "intake", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    /**
+     * LAZY — 목록 조회 화면(입고/대시보드)은 Repository 의 fetch join 으로 미리 채워 N+1 을 막고,
+     * 트랜잭션 밖에서 우연히 컬렉션을 건드릴 때만 LazyInitializationException 으로 빠르게 드러난다.
+     */
+    @OneToMany(mappedBy = "intake", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<InsuranceClaim> claims = new ArrayList<>();
 
-    /** rentals 는 별도 화면에서만 조회 — LAZY 유지 (단, 컬렉션을 EAGER 로 둘 경우 MultipleBagFetchException 회피 위해 한쪽만 EAGER). */
     @OneToMany(mappedBy = "intake", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<RentalHistory> rentals = new ArrayList<>();
 

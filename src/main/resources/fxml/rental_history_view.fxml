@@ -3,7 +3,6 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.CheckBox?>
-<?import javafx.scene.control.ChoiceBox?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
@@ -61,8 +60,9 @@
                     </rowConstraints>
 
                     <Label text="입고 선택*"   GridPane.columnIndex="0" GridPane.rowIndex="0"/>
-                    <ChoiceBox fx:id="intakeChoice" maxWidth="Infinity"
-                               GridPane.columnIndex="1" GridPane.rowIndex="0"/>
+                    <ComboBox fx:id="intakeChoice" editable="true" maxWidth="Infinity"
+                              promptText="입고번호·차량명·차량번호 검색"
+                              GridPane.columnIndex="1" GridPane.rowIndex="0"/>
 
                     <Label text="대차차량*"    GridPane.columnIndex="0" GridPane.rowIndex="1"/>
                     <ComboBox fx:id="vehicleCombo" maxWidth="Infinity"

@@ -24,29 +24,42 @@ public class RentalHistoryRepository {
 
     public List<RentalHistory> findAll() {
         return Tx.read(s -> s.createQuery("""
-                        from RentalHistory
-                        order by rentalStartDate desc, id desc
+                        select r from RentalHistory r
+                        join fetch r.intake
+                        join fetch r.rentalVehicle
+                        order by r.rentalStartDate desc, r.id desc
                         """, RentalHistory.class)
                 .getResultList());
     }
 
     public List<RentalHistory> findActive() {
         return Tx.read(s -> s.createQuery("""
-                        from RentalHistory
-                        where rentalEndDate is null
-                        order by rentalStartDate desc, id desc
+                        select r from RentalHistory r
+                        join fetch r.intake
+                        join fetch r.rentalVehicle
+                        where r.rentalEndDate is null
+                        order by r.rentalStartDate desc, r.id desc
                         """, RentalHistory.class)
                 .getResultList());
     }
 
     public List<RentalHistory> findByIntakeId(Long intakeId) {
         return Tx.read(s -> s.createQuery("""
-                        from RentalHistory
-                        where intake.id = :id
-                        order by rentalStartDate desc, id desc
+                        select r from RentalHistory r
+                        join fetch r.intake
+                        join fetch r.rentalVehicle
+                        where r.intake.id = :id
+                        order by r.rentalStartDate desc, r.id desc
                         """, RentalHistory.class)
                 .setParameter("id", intakeId)
                 .getResultList());
+    }
+
+    /** 대시보드용 — 현재 대차중(종료일 NULL) 건수만 가볍게 조회. */
+    public long countActive() {
+        return Tx.read(s -> s.createQuery(
+                        "select count(r) from RentalHistory r where r.rentalEndDate is null", Long.class)
+                .uniqueResult());
     }
 
     /** 해당 차량이 현재 대차중인지 */
