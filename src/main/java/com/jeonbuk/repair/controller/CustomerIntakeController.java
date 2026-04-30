@@ -949,6 +949,23 @@ public class CustomerIntakeController {
     }
 
     /**
+     * 외부 화면(대시보드 카드 등)에서 특정 필터로 화면에 진입할 때 호출.
+     * 검색어를 비우고 해당 토글을 선택한 뒤 새로고침 — 폼은 닫아 깨끗한 목록만 보이게 한다.
+     */
+    public void navigateWithFilter(IntakeFilter filter) {
+        if (filter == null) filter = IntakeFilter.ACTIVE;
+        if (searchField != null) searchField.clear();
+        switch (filter) {
+            case CLOSED -> { if (filterClosed != null) filterClosed.setSelected(true); }
+            case ALL    -> { if (filterAll    != null) filterAll.setSelected(true); }
+            case ACTIVE -> { if (filterActive != null) filterActive.setSelected(true); }
+        }
+        reload();
+        hideForm();
+        if (intakeTable != null) intakeTable.getSelectionModel().clearSelection();
+    }
+
+    /**
      * 입고 id → 가장 최근 대차차량 이름 맵 갱신.
      * findAll() 이 rentalStartDate desc, id desc 정렬이라 같은 입고의 첫 항목이 가장 최근.
      */

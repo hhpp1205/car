@@ -1,5 +1,6 @@
 package com.jeonbuk.repair.controller;
 
+import com.jeonbuk.repair.service.IntakeFilter;
 import com.jeonbuk.repair.view.DisplaySettingsDialog;
 import com.jeonbuk.repair.view.ViewLoader;
 import javafx.fxml.FXML;
@@ -51,8 +52,27 @@ public class MainController {
         // 통계 화면 → 입/출고관리 점프 콜백 주입
         statsCtrl.setIntakeNavigator(this::navigateToIntake);
 
+        // 대시보드 카드 클릭 → 해당 화면+필터로 점프
+        dashboardCtrl.setNavigator(new DashboardController.DashboardNavigator() {
+            @Override public void goToInProgressIntakes() { navigateToIntakes(IntakeFilter.ACTIVE); }
+            @Override public void goToOutstandingIntakes() { navigateToIntakes(IntakeFilter.ALL); }
+            @Override public void goToActiveRentals() { navigateToActiveRentals(); }
+            @Override public void goToOverdueIntakes() { navigateToIntakes(IntakeFilter.ALL); }
+        });
+
         // 첫 진입은 대시보드
         showDashboard();
+    }
+
+    private void navigateToIntakes(IntakeFilter filter) {
+        intakeCtrl.navigateWithFilter(filter);
+        switchTo(intakeView, navIntake);
+    }
+
+    private void navigateToActiveRentals() {
+        rentalCtrl.refreshIntakeList();
+        rentalCtrl.showActiveOnly();
+        switchTo(rentalView, navRental);
     }
 
     /** 통계 상세 다이얼로그에서 입고번호를 클릭했을 때 호출 — 입/출고관리로 전환 후 해당 행 노출. */

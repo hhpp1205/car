@@ -34,6 +34,12 @@
         <DatePicker fx:id="fromDatePicker" prefWidth="140"/>
         <Label text="~"/>
         <DatePicker fx:id="toDatePicker" prefWidth="140"/>
+        <HBox spacing="4" alignment="CENTER_LEFT">
+            <Button text="3개월" onAction="#onPeriod3M"  styleClass="btn-ghost, period-quick-pick"/>
+            <Button text="6개월" onAction="#onPeriod6M"  styleClass="btn-ghost, period-quick-pick"/>
+            <Button text="올해"  onAction="#onPeriodYTD" styleClass="btn-ghost, period-quick-pick"/>
+            <Button text="전체"  onAction="#onPeriodAll" styleClass="btn-ghost, period-quick-pick"/>
+        </HBox>
         <Region prefWidth="16"/>
         <Label text="청구 구분:" styleClass="filter-label"/>
         <ChoiceBox fx:id="sideChoice" prefWidth="100"/>
@@ -42,6 +48,9 @@
         <Region HBox.hgrow="ALWAYS"/>
         <Button text="적용" onAction="#onApplyFilter" styleClass="primary"/>
     </HBox>
+
+    <!-- 적용된 기간을 명시 — 비어있을 때는 "전체" 로 표기해 모호함 제거 -->
+    <Label fx:id="periodSummaryLabel" styleClass="hint" text=""/>
 
     <!-- 요약 카드 4개 -->
     <HBox spacing="16" styleClass="card-grid">

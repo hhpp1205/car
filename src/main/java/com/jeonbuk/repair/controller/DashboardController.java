@@ -25,6 +25,16 @@ import java.util.stream.Collectors;
 
 public class DashboardController {
 
+    /** 카드 클릭 시 어느 화면+필터로 점프할지 — MainController 가 주입. */
+    public interface DashboardNavigator {
+        void goToInProgressIntakes();
+        void goToOutstandingIntakes();
+        void goToActiveRentals();
+        void goToOverdueIntakes();
+    }
+
+    private DashboardNavigator navigator;
+
     private static final int RECENT_LIMIT = 12;
 
     @FXML private CheckBox includeClosedCheck;
@@ -56,6 +66,30 @@ public class DashboardController {
     @FXML
     private void onRefresh() {
         refresh();
+    }
+
+    public void setNavigator(DashboardNavigator navigator) {
+        this.navigator = navigator;
+    }
+
+    @FXML
+    private void onInProgressCardClicked() {
+        if (navigator != null) navigator.goToInProgressIntakes();
+    }
+
+    @FXML
+    private void onOutstandingCardClicked() {
+        if (navigator != null) navigator.goToOutstandingIntakes();
+    }
+
+    @FXML
+    private void onActiveRentalCardClicked() {
+        if (navigator != null) navigator.goToActiveRentals();
+    }
+
+    @FXML
+    private void onOverdueCardClicked() {
+        if (navigator != null) navigator.goToOverdueIntakes();
     }
 
     /** 사이드바에서 대시보드로 진입할 때마다 호출 — DB 변경사항 반영. */

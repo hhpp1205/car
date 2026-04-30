@@ -22,24 +22,28 @@
         <Button text="새로고침" styleClass="button-outlined" onAction="#onRefresh"/>
     </HBox>
 
-    <!-- 카드 4개 -->
+    <!-- 카드 4개 — 클릭 시 해당 화면+필터로 점프 -->
     <HBox spacing="16" styleClass="card-grid">
-        <VBox styleClass="card, card-accent-blue" HBox.hgrow="ALWAYS">
+        <VBox styleClass="card, card-accent-blue, card-clickable" HBox.hgrow="ALWAYS"
+              onMouseClicked="#onInProgressCardClicked">
             <Label text="진행 중 입고"          styleClass="card-label"/>
             <Label fx:id="inProgressValue"     styleClass="card-number" text="0"/>
             <Label fx:id="inProgressFootnote"  styleClass="card-footnote" text="아직 출고되지 않은 차량"/>
         </VBox>
-        <VBox styleClass="card, card-accent-amber" HBox.hgrow="ALWAYS">
+        <VBox styleClass="card, card-accent-amber, card-clickable" HBox.hgrow="ALWAYS"
+              onMouseClicked="#onOutstandingCardClicked">
             <Label text="미수금 합계"          styleClass="card-label"/>
             <Label fx:id="outstandingValue"   styleClass="card-number" text="0원"/>
             <Label fx:id="outstandingFootnote" styleClass="card-footnote" text="청구 후 미수령 금액"/>
         </VBox>
-        <VBox styleClass="card, card-accent-green" HBox.hgrow="ALWAYS">
+        <VBox styleClass="card, card-accent-green, card-clickable" HBox.hgrow="ALWAYS"
+              onMouseClicked="#onActiveRentalCardClicked">
             <Label text="대차 중 차량"        styleClass="card-label"/>
             <Label fx:id="rentalActiveValue" styleClass="card-number" text="0"/>
             <Label fx:id="rentalActiveFootnote" styleClass="card-footnote" text="현재 대여 중"/>
         </VBox>
-        <VBox styleClass="card, card-accent-red" HBox.hgrow="ALWAYS">
+        <VBox styleClass="card, card-accent-red, card-clickable" HBox.hgrow="ALWAYS"
+              onMouseClicked="#onOverdueCardClicked">
             <Label text="30일 경과 미수령"    styleClass="card-label"/>
             <Label fx:id="overdueValue"      styleClass="card-number" text="0"/>
             <Label fx:id="overdueFootnote"   styleClass="card-footnote" text="청구 후 30일+ 경과"/>

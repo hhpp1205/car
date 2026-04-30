@@ -8,11 +8,13 @@ import com.jeonbuk.repair.service.ServiceRegistry;
 import com.jeonbuk.repair.util.Dialogs;
 import com.jeonbuk.repair.util.Formatters;
 import com.jeonbuk.repair.view.ViewLoader;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.chart.BarChart;
 import javafx.scene.chart.CategoryAxis;
@@ -26,9 +28,11 @@ import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
+import javafx.scene.control.Tooltip;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.Window;
+import javafx.util.Duration;
 import javafx.util.StringConverter;
 
 import java.time.LocalDate;
@@ -47,6 +51,7 @@ public class InsuranceStatsController {
     @FXML private DatePicker toDatePicker;
     @FXML private ChoiceBox<SideOption> sideChoice;
     @FXML private CheckBox hideEmptyCheck;
+    @FXML private Label periodSummaryLabel;
 
     @FXML private Label totalCountValue;
     @FXML private Label totalClaimValue;
@@ -101,6 +106,31 @@ public class InsuranceStatsController {
 
     @FXML
     private void onApplyFilter() {
+        reload();
+    }
+
+    @FXML private void onPeriod3M() { setPeriodMonths(3); }
+    @FXML private void onPeriod6M() { setPeriodMonths(6); }
+
+    @FXML
+    private void onPeriodYTD() {
+        LocalDate today = LocalDate.now();
+        fromDatePicker.setValue(today.withDayOfYear(1));
+        toDatePicker.setValue(today);
+        reload();
+    }
+
+    @FXML
+    private void onPeriodAll() {
+        fromDatePicker.setValue(null);
+        toDatePicker.setValue(null);
+        reload();
+    }
+
+    private void setPeriodMonths(int months) {
+        LocalDate today = LocalDate.now();
+        fromDatePicker.setValue(today.minusMonths(months));
+        toDatePicker.setValue(today);
         reload();
     }
 
@@ -174,6 +204,19 @@ public class InsuranceStatsController {
         rows.setAll(stats);
         updateSummaryCards(stats);
         updateChart(stats);
+        updatePeriodSummary(from, to);
+    }
+
+    /** 필터바 아래에 적용된 기간을 명시 — 비어있을 때는 "전체" 로 표기. */
+    private void updatePeriodSummary(LocalDate from, LocalDate to) {
+        if (periodSummaryLabel == null) return;
+        if (from == null && to == null) {
+            periodSummaryLabel.setText("표시 기간: 전체 (제한 없음)");
+            return;
+        }
+        String fromText = from == null ? "처음"   : Formatters.date(from);
+        String toText   = to   == null ? "오늘"   : Formatters.date(to);
+        periodSummaryLabel.setText("표시 기간: " + fromText + " ~ " + toText);
     }
 
     private List<CompanyStat> mergeWithKnownCompanies(List<CompanyStat> existing) {
@@ -266,6 +309,25 @@ public class InsuranceStatsController {
             recvSeries.getData().add(new XYChart.Data<>(s.company(), s.receivedSum()));
         }
         chart.getData().setAll(List.of(claimSeries, recvSeries));
+
+        // 막대 노드는 setData 후 layout 패스에서 attach 되므로 runLater 로 툴팁 부착 연기
+        Platform.runLater(this::attachBarTooltips);
+    }
+
+    /** 각 막대에 hover 시 정확한 금액 Tooltip 부착 — 막대 자체엔 라벨을 그리지 않고 호버에만 노출. */
+    private void attachBarTooltips() {
+        for (XYChart.Series<String, Number> series : chart.getData()) {
+            for (XYChart.Data<String, Number> data : series.getData()) {
+                Node bar = data.getNode();
+                if (bar == null) continue;
+                long value = data.getYValue() == null ? 0L : data.getYValue().longValue();
+                Tooltip tt = new Tooltip(
+                        data.getXValue() + "\n" + series.getName() + ": "
+                                + Formatters.money((int) Math.min(Integer.MAX_VALUE, value)) + " 원");
+                tt.setShowDelay(Duration.millis(120));
+                Tooltip.install(bar, tt);
+            }
+        }
     }
 
     // ─── 셀 팩토리 ──────────────────────────────────────────────

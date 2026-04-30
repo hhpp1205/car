@@ -243,6 +243,24 @@
 .card-accent-green .card-number { -fx-text-fill: #15803d; }
 .card-accent-red   .card-number { -fx-text-fill: #b91c1c; }
 
+/* 클릭 가능한 카드 — 마우스 올릴 때 살짝 떠오르는 효과 */
+.card-clickable {
+    -fx-cursor: hand;
+}
+.card-clickable:hover {
+    -fx-background-color: -color-bg-default;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.10), 6, 0.0, 0, 2);
+}
+.card-clickable:pressed {
+    -fx-translate-y: 1;
+}
+
+/* 통계 필터 — 기간 빠른선택 버튼 (작고 컴팩트하게) */
+.period-quick-pick {
+    -fx-padding: 4 8 4 8;
+    -fx-font-size: 11px;
+}
+
 /* ───── 진행상태 배지 (chip) ─────
    셀 전체가 아닌 셀 안의 Label(.status-badge) 만 색칠해 chip 모양을 만든다.
    row hover/select 시 셀 배경이 바뀌어도 칩 색은 유지 → 가독성 보장. */

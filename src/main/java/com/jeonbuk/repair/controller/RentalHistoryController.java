@@ -132,6 +132,19 @@ public class RentalHistoryController {
         reload();
     }
 
+    /**
+     * 외부 화면(대시보드 카드)에서 "대차 중" 항목만 보고 싶을 때 호출.
+     * 활성 필터 체크박스를 켜고 selection 을 비운다.
+     */
+    public void showActiveOnly() {
+        if (onlyActiveCheck != null && !onlyActiveCheck.isSelected()) {
+            onlyActiveCheck.setSelected(true);  // listener 가 reload 트리거
+        } else {
+            reload();
+        }
+        if (rentalTable != null) rentalTable.getSelectionModel().clearSelection();
+    }
+
     @FXML
     private void onNew() {
         clearForm();
