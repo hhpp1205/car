@@ -190,7 +190,7 @@
 .table-view .table-row-cell {
     -fx-border-color: -color-border-default;
     -fx-border-width: 0 0 1 0;
-    -fx-cell-size: 30;
+    -fx-cell-size: 27;
 }
 
 /* zebra 줄무늬 (홀수/짝수 row 색 구분) */
