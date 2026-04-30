@@ -7,6 +7,7 @@ import com.jeonbuk.repair.service.RentalService;
 import com.jeonbuk.repair.service.ServiceRegistry;
 import com.jeonbuk.repair.util.Dialogs;
 import com.jeonbuk.repair.util.Formatters;
+import com.jeonbuk.repair.util.Toast;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -153,8 +154,8 @@ public class RentalHistoryController {
             RentalHistory target = (editing == null) ? new RentalHistory() : editing;
             applyForm(target);
             rentalService.save(target);
-            Dialogs.info("저장", "대차이력이 저장되었습니다.");
             reload();
+            Toast.show(rentalTable, "대차이력이 저장되었습니다");
         } catch (IllegalArgumentException e) {
             Dialogs.warn("입력 오류", e.getMessage());
         } catch (RuntimeException e) {

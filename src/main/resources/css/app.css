@@ -16,7 +16,7 @@
 
 .sidebar {
     -fx-background-color: #0f172a;            /* slate-900 */
-    -fx-min-width: 220;
+    -fx-min-width: 170;
     -fx-padding: 0;
 }
 
@@ -45,15 +45,24 @@
     -fx-text-fill: #cbd5e1;                    /* slate-300 */
     -fx-font-size: 14px;
     -fx-alignment: CENTER_LEFT;
-    -fx-padding: 10 14 10 14;
+    -fx-padding: 8 10 8 10;
     -fx-background-radius: 6;
     -fx-cursor: hand;
     -fx-border-color: transparent;
+    -fx-graphic-text-gap: 10;                  /* 아이콘과 텍스트 사이 간격 */
+}
+
+.sidebar .nav-button .ikonli-font-icon {
+    -fx-icon-color: #94a3b8;                   /* slate-400 — 기본은 텍스트보다 살짝 더 죽임 */
 }
 
 .sidebar .nav-button:hover {
     -fx-background-color: #1e293b;             /* slate-800 */
     -fx-text-fill: white;
+}
+
+.sidebar .nav-button:hover .ikonli-font-icon {
+    -fx-icon-color: white;
 }
 
 .sidebar .nav-button.active {
@@ -62,10 +71,103 @@
     -fx-font-weight: bold;
 }
 
+.sidebar .nav-button.active .ikonli-font-icon {
+    -fx-icon-color: white;
+}
+
 .sidebar .version-label {
     -fx-text-fill: #475569;
     -fx-font-size: 11px;
     -fx-padding: 0 0 0 4;
+}
+
+/* ───── Toss-style 헤더 ─────
+   둥근 pill 검색 + segmented 필터 토글 + ghost 버튼.
+   ToolBar 대신 HBox 로 직접 레이아웃해 자유로운 radius·spacing 처리. */
+
+.toss-header {
+    -fx-background-color: white;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.04), 4, 0, 0, 2);
+}
+
+.toss-toolbar-row {
+    -fx-padding: 16 32 8 32;
+}
+
+.toss-toolbar-row-bottom {
+    -fx-padding: 10 32 22 32;
+}
+
+/* 검색 — pill TextField */
+.search-pill {
+    -fx-background-color: #f2f4f6;
+    -fx-background-insets: 0;
+    -fx-background-radius: 10;
+    -fx-border-color: transparent;
+    -fx-padding: 9 14 9 14;
+    -fx-prompt-text-fill: #8b95a1;
+}
+.search-pill:focused {
+    -fx-background-color: #3182f6, white;
+    -fx-background-insets: 0, 1.5;
+    -fx-background-radius: 10, 9;
+}
+
+/* segmented filter — ToggleButton 3개를 하나의 pill 컨테이너로 묶음 */
+.segmented-filter {
+    -fx-background-color: #f2f4f6;
+    -fx-background-radius: 10;
+    -fx-padding: 3;
+    -fx-spacing: 0;
+}
+
+.segmented-filter .toggle-button {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-text-fill: #6b7684;
+    -fx-font-weight: bold;
+    -fx-padding: 5 14 5 14;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+    -fx-focus-traversable: false;
+}
+.segmented-filter .toggle-button:hover {
+    -fx-text-fill: #191f28;
+}
+.segmented-filter .toggle-button:selected {
+    -fx-background-color: white;
+    -fx-text-fill: #3182f6;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.08), 3, 0, 0, 1);
+}
+
+/* primary pill 버튼 (Toss blue) */
+.btn-pill-primary {
+    -fx-background-color: #3182f6;
+    -fx-background-radius: 8;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 7 18 7 18;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+}
+.btn-pill-primary:hover  { -fx-background-color: #1b64da; }
+.btn-pill-primary:pressed { -fx-background-color: #1957c2; }
+
+/* ghost 버튼 — 보더 없이 hover 시에만 옅은 배경 */
+.btn-ghost {
+    -fx-background-color: transparent;
+    -fx-background-radius: 8;
+    -fx-text-fill: #4e5968;
+    -fx-padding: 7 12 7 12;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+}
+.btn-ghost:hover {
+    -fx-background-color: #f2f4f6;
+    -fx-text-fill: #191f28;
+}
+.btn-ghost:disabled {
+    -fx-opacity: 0.4;
 }
 
 /* ───── 페이지 공통 ───── */
@@ -141,24 +243,36 @@
 .card-accent-green .card-number { -fx-text-fill: #15803d; }
 .card-accent-red   .card-number { -fx-text-fill: #b91c1c; }
 
-/* ───── 진행상태 배지 ───── */
-
-.table-row-cell .badge-repairing,
-.table-row-cell .badge-released,
-.table-row-cell .badge-claimed,
-.table-row-cell .badge-settled,
-.table-row-cell .badge-closed {
-    -fx-padding: 2 8 2 8;
+/* ───── 진행상태 배지 (chip) ─────
+   셀 전체가 아닌 셀 안의 Label(.status-badge) 만 색칠해 chip 모양을 만든다.
+   row hover/select 시 셀 배경이 바뀌어도 칩 색은 유지 → 가독성 보장. */
+.status-badge {
+    -fx-padding: 1 7 1 7;
     -fx-background-radius: 999;
-    -fx-font-size: 11px;
+    -fx-font-size: 9px;
     -fx-font-weight: bold;
 }
 
-.badge-repairing { -fx-text-fill: #b45309; }
-.badge-released  { -fx-text-fill: #1d4ed8; }
-.badge-claimed   { -fx-text-fill: #7c3aed; }
-.badge-settled   { -fx-text-fill: #15803d; }
-.badge-closed    { -fx-text-fill: #6b7280; }
+.status-badge.badge-repairing {
+    -fx-background-color: #fef3c7;   /* amber-100 */
+    -fx-text-fill:        #b45309;   /* amber-700 */
+}
+.status-badge.badge-released {
+    -fx-background-color: #dbeafe;   /* blue-100 */
+    -fx-text-fill:        #1d4ed8;   /* blue-700 */
+}
+.status-badge.badge-claimed {
+    -fx-background-color: #ede9fe;   /* purple-100 */
+    -fx-text-fill:        #7c3aed;   /* purple-700 */
+}
+.status-badge.badge-settled {
+    -fx-background-color: #dcfce7;   /* green-100 */
+    -fx-text-fill:        #15803d;   /* green-700 */
+}
+.status-badge.badge-closed {
+    -fx-background-color: #e5e7eb;   /* gray-200 */
+    -fx-text-fill:        #4b5563;   /* gray-600 */
+}
 
 /* 종결된 row — 전체 톤을 회색 계열로 dim 처리해 활성 건과 구분 */
 .table-view .table-row-cell.row-closed,
@@ -191,18 +305,23 @@
     -fx-border-width: 0 1 1 0;
 }
 
+/* 테이블 폰트 — 본문(13px) 대비 0.7배로 축소해 콤팩트 표시 */
+.table-view {
+    -fx-font-size: 9px;
+}
+
 /* 데이터 셀에 세로 구분선 */
 .table-view .table-row-cell .table-cell {
     -fx-border-color: -color-border-default;
     -fx-border-width: 0 1 0 0;
-    -fx-padding: 4 8 4 8;
+    -fx-padding: 3 6 3 6;
 }
 
 /* row 간 가로 경계선 강조 */
 .table-view .table-row-cell {
     -fx-border-color: -color-border-default;
     -fx-border-width: 0 0 1 0;
-    -fx-cell-size: 27;
+    -fx-cell-size: 19;
 }
 
 /* zebra 줄무늬 (홀수/짝수 row 색 구분) */
@@ -291,4 +410,54 @@
 .form-close-button:hover {
     -fx-background-color: -color-bg-subtle;
     -fx-text-fill: -color-fg-default;
+}
+
+/* ───── 차량명 자동완성 팝업 ───── */
+
+.autocomplete-list {
+    -fx-background-color: -color-bg-default;
+    -fx-background-radius: 6;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-padding: 4;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 10, 0, 0, 3);
+}
+
+.autocomplete-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-fg-default;
+    -fx-padding: 4 10 4 10;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+}
+
+.autocomplete-list .list-cell:filled:hover {
+    -fx-background-color: -color-bg-subtle;
+}
+
+.autocomplete-list .list-cell:filled:selected,
+.autocomplete-list .list-cell:filled:selected:hover {
+    -fx-background-color: -color-accent-subtle;
+    -fx-text-fill: -color-fg-default;
+}
+
+.autocomplete-list .autocomplete-match {
+    -fx-font-weight: bold;
+    -fx-fill: -color-accent-fg;
+}
+
+/* ───── 토스트(우측 하단 알림) ───── */
+
+.toast-root {
+    -fx-background-color: rgba(15, 23, 42, 0.94);   /* slate-900 + 알파 */
+    -fx-background-radius: 8;
+    -fx-padding: 12 18 12 18;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 14, 0, 0, 4);
+}
+
+.toast-label {
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
 }

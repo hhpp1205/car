@@ -14,6 +14,7 @@ import com.jeonbuk.repair.service.ServiceRegistry;
 import com.jeonbuk.repair.util.Dialogs;
 import com.jeonbuk.repair.util.Formatters;
 import com.jeonbuk.repair.util.HangulIme;
+import com.jeonbuk.repair.util.Toast;
 import com.jeonbuk.repair.util.VehicleNameCatalog;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -32,6 +33,9 @@ import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
+import javafx.stage.Popup;
 import javafx.util.StringConverter;
 
 import java.time.LocalDate;
@@ -44,8 +48,10 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.prefs.Preferences;
 
 /**
  * 통합 입력 화면 — 입고 + 대차 + 자차/상대 보험청구를 한 폼에서 처리.
@@ -65,12 +71,20 @@ public class CustomerIntakeController {
 
     // ----- 좌측 테이블 -----
     @FXML private TextField searchField;
-    @FXML private RadioButton filterActive;
-    @FXML private RadioButton filterClosed;
-    @FXML private RadioButton filterAll;
+    @FXML private ToggleButton filterActive;
+    @FXML private ToggleButton filterClosed;
+    @FXML private ToggleButton filterAll;
     @FXML private Button closeBtn;
     @FXML private Button reopenBtn;
+    @FXML private Button columnsBtn;
     @FXML private TableView<CustomerIntake> intakeTable;
+    // 그룹 헤더 컬럼 — visibility 토글로 그룹 단위 숨김. 두번째 타입 파라미터는 자식 셀 데이터가 없어 무관.
+    @FXML private TableColumn<CustomerIntake, ?> grpIntake;
+    @FXML private TableColumn<CustomerIntake, ?> grpRelease;
+    @FXML private TableColumn<CustomerIntake, ?> grpTow;
+    @FXML private TableColumn<CustomerIntake, ?> grpRental;
+    @FXML private TableColumn<CustomerIntake, ?> grpOwnClaim;
+    @FXML private TableColumn<CustomerIntake, ?> grpOpponentClaim;
     @FXML private TableColumn<CustomerIntake, Boolean>   colSelect;
     @FXML private TableColumn<CustomerIntake, String>    colIntakeNo;
     @FXML private TableColumn<CustomerIntake, LocalDate> colIntakeDate;
@@ -154,7 +168,22 @@ public class CustomerIntakeController {
 
     /** 차량명 자동완성용 — 등록된 차량명 캐시. 저장 시점마다 갱신. */
     private final List<String> vehicleNameSuggestions = new ArrayList<>();
-    private ContextMenu vehicleNameAutoComplete;
+    private Popup vehicleNamePopup;
+    private ListView<String> vehicleNameSuggestionList;
+
+    /**
+     * 폼 dirty 플래그 — 사용자가 폼 필드를 수정했는지 추적.
+     * loadToForm/clearForm/저장 직후엔 false 로 초기화.
+     * 다른 행 클릭, 폼 닫기, 신규/초기화 시 dirty 면 확인 다이얼로그.
+     */
+    private final BooleanProperty dirty = new SimpleBooleanProperty(false);
+    /** loadToForm/clearForm 이 필드를 채우는 동안 dirty 가 잘못 켜지지 않도록 가드. */
+    private boolean loadingForm = false;
+    /**
+     * 마우스 PRESSED 단계에서 dirty 가드가 거부되면 false 로 떨어뜨려
+     * 같은 클릭의 후속 CLICKED 핸들러가 selection clear/hideForm 을 못하게 한다.
+     */
+    private boolean dirtyCheckPassed = true;
 
     /**
      * 입고 id → 체크 상태 BooleanProperty.
@@ -171,9 +200,23 @@ public class CustomerIntakeController {
     public void initialize() {
         configureTable();
         configureForm();
+        registerDirtyListeners();   // configureForm 의 초기값 세팅이 dirty 를 켜지 않도록 이후에 등록
+        applyColumnVisibilityPrefs();  // 사용자가 마지막에 숨긴 그룹 복원
+        enforceFilterSelected();    // segmented ToggleButton 한 개는 항상 선택돼있도록 가드
         reload();
         hideForm();  // 첫 진입 시 입력 폼은 숨김 — 신규/row 클릭 시에만 표시
         installEscToCloseForm();
+    }
+
+    /** ToggleButton 은 RadioButton 과 달리 같은 토글을 다시 누르면 해제된다.
+     *  세그먼트 필터에선 항상 한 개가 선택돼있어야 의미가 있으므로 해제 시 즉시 되돌린다. */
+    private void enforceFilterSelected() {
+        if (filterActive == null) return;
+        ToggleGroup g = filterActive.getToggleGroup();
+        if (g == null) return;
+        g.selectedToggleProperty().addListener((obs, oldT, newT) -> {
+            if (newT == null && oldT != null) oldT.setSelected(true);
+        });
     }
 
     /**
@@ -276,10 +319,46 @@ public class CustomerIntakeController {
         // press 시점에 직전 선택을 저장 — click 시점엔 selection 이 이미 갱신돼 있어 비교가 의미 없다.
         // setOnMousePressed (event handler) 는 JavaFX 의 default selection update 보다 *후에* 실행되므로
         // capturing phase 의 addEventFilter 로 등록해야 selection 갱신 전 시점을 잡을 수 있다.
-        intakeTable.addEventFilter(MouseEvent.MOUSE_PRESSED, e ->
-                selectionBeforeClick = intakeTable.getSelectionModel().getSelectedItem());
+        //
+        // 또한 dirty 가드 — 변경사항 있는 폼이 떠있을 때 다른 행/빈영역/같은행재클릭 으로
+        // 데이터 유실이 발생할 수 있는 클릭은 PRESSED 시점에 사용자에게 확인.
+        // 거부되면 e.consume() 로 default selection update 차단 + dirtyCheckPassed=false 로
+        // CLICKED 핸들러에서 후속 처리(빈영역 → hideForm 등)도 스킵.
+        intakeTable.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
+            CustomerIntake before = intakeTable.getSelectionModel().getSelectedItem();
+            selectionBeforeClick = before;
+            dirtyCheckPassed = true;
+
+            if (!dirty.get() || !isFormVisible()) return;
+
+            Node picked = e.getPickResult().getIntersectedNode();
+            if (isInsideTableHeader(picked)) return;
+
+            TableRow<?> row = findTableRow(picked);
+            CustomerIntake target = null;
+            if (row != null && !row.isEmpty() && row.getItem() instanceof CustomerIntake ci) {
+                target = ci;
+            }
+
+            boolean willChangeSelection = (target == null && before != null)
+                    || (target != null && (before == null
+                            || !Objects.equals(target.getId(), before.getId())));
+            // 같은 행 재클릭 — CLICKED 핸들러가 폼을 닫음 → 데이터 유실 위험
+            boolean sameRowReclickClosing = target != null && before != null
+                    && Objects.equals(target.getId(), before.getId());
+
+            if (willChangeSelection || sameRowReclickClosing) {
+                if (!confirmDiscardChanges()) {
+                    dirtyCheckPassed = false;
+                    e.consume();
+                }
+            }
+        });
 
         intakeTable.setOnMouseClicked(e -> {
+            // PRESSED 단계에서 dirty 가드가 거부됐다면 후속 처리 스킵
+            if (!dirtyCheckPassed) return;
+
             Node picked = e.getPickResult().getIntersectedNode();
             if (isInsideTableHeader(picked)) return;
             TableRow<?> row = findTableRow(picked);
@@ -449,22 +528,31 @@ public class CustomerIntakeController {
 
     private TableCell<CustomerIntake, String> statusCell() {
         return new TableCell<>() {
+            private final Label badge = new Label();
+            { badge.getStyleClass().add("status-badge"); }
+
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                getStyleClass().removeAll(
+                if (empty || item == null || item.isEmpty()) {
+                    setGraphic(null);
+                    setText(null);
+                    return;
+                }
+                badge.setText(item);
+                badge.getStyleClass().removeAll(
                         "badge-repairing", "badge-released", "badge-claimed",
                         "badge-settled", "badge-closed");
-                if (empty || item == null) { setText(""); return; }
-                setText(item);
                 switch (item) {
-                    case "수리중"   -> getStyleClass().add("badge-repairing");
-                    case "출고완료" -> getStyleClass().add("badge-released");
-                    case "청구완료" -> getStyleClass().add("badge-claimed");
-                    case "수령완료" -> getStyleClass().add("badge-settled");
-                    case "종결"     -> getStyleClass().add("badge-closed");
+                    case "수리중"   -> badge.getStyleClass().add("badge-repairing");
+                    case "출고완료" -> badge.getStyleClass().add("badge-released");
+                    case "청구완료" -> badge.getStyleClass().add("badge-claimed");
+                    case "수령완료" -> badge.getStyleClass().add("badge-settled");
+                    case "종결"     -> badge.getStyleClass().add("badge-closed");
                     default -> { /* no-op */ }
                 }
+                setGraphic(badge);
+                setText(null);
             }
         };
     }
@@ -703,16 +791,19 @@ public class CustomerIntakeController {
         sb.append(label).append(" 결과: ").append(result.processed()).append("건 처리");
         if (result.skipped() > 0) sb.append(", ").append(result.skipped()).append("건 건너뜀");
         if (!result.failures().isEmpty()) {
+            // 실패가 섞인 경우 — 사유 확인이 필요하므로 모달 유지
             sb.append(", ").append(result.failures().size()).append("건 실패\n\n실패 사유:\n");
             for (String f : result.failures()) sb.append("• ").append(f).append('\n');
             Dialogs.error(label + " 일부 실패", sb.toString());
         } else {
-            Dialogs.info(label + " 완료", sb.toString());
+            // 전건 성공 — 비차단 토스트
+            Toast.show(intakeTable, sb.toString());
         }
     }
 
     @FXML
     private void onNew() {
+        if (isFormVisible() && dirty.get() && !confirmDiscardChanges()) return;
         clearForm();
         editing = null;
         editingRental = null;
@@ -726,6 +817,7 @@ public class CustomerIntakeController {
     /** 입력 폼의 값만 비우고 닫지는 않음. (이전엔 onNew 로 위임) */
     @FXML
     private void onClear() {
+        if (dirty.get() && !confirmDiscardChanges()) return;
         clearForm();
         editing = null;
         editingRental = null;
@@ -737,30 +829,64 @@ public class CustomerIntakeController {
 
     @FXML
     private void onCloseForm() {
+        if (dirty.get() && !confirmDiscardChanges()) return;
         hideForm();
         intakeTable.getSelectionModel().clearSelection();
     }
 
     @FXML
     private void onSave() {
+        if (!saveCurrent()) return;
+        // 저장된 row 를 강조하되 listener 가 폼을 다시 띄우지 않도록 막은 후 닫기
+        suppressFormShow = true;
+        try {
+            selectByIntakeNo(lastSavedIntakeNo);
+        } finally {
+            suppressFormShow = false;
+        }
+        hideForm();
+    }
+
+    /**
+     * 저장 후 폼을 닫지 않고 새 입력 상태로 초기화 — 연속 입력 워크플로우.
+     * 이전 저장 row 는 테이블에서 강조하지 않고 사용자가 곧바로 새 입고를 입력할 수 있게 한다.
+     */
+    @FXML
+    private void onSaveAndNew() {
+        if (!saveCurrent()) return;
+        clearForm();
+        editing = null;
+        editingRental = null;
+        editingOwnClaim = null;
+        editingOpponentClaim = null;
+        intakeTable.getSelectionModel().clearSelection();
+        showForm();
+        intakeDatePicker.requestFocus();
+    }
+
+    /** 마지막 저장 입고번호 — onSave 에서 selectByIntakeNo 호출에 사용. */
+    private String lastSavedIntakeNo;
+
+    /**
+     * 폼 검증 → 저장 → reload → dirty 초기화 까지 공통 처리.
+     * 성공하면 우측 하단 토스트, 실패(검증 오류/예외)는 모달 다이얼로그.
+     */
+    private boolean saveCurrent() {
         try {
             IntakeWorkflowService.Form form = buildForm();
             CustomerIntake saved = workflowService.save(form);
-            Dialogs.info("저장", "입고번호 " + saved.getIntakeNo() + " 저장되었습니다.");
+            lastSavedIntakeNo = saved.getIntakeNo();
             reload();
             reloadVehicleNameSuggestions();
-            // 저장된 row 를 강조하되 listener 가 폼을 다시 띄우지 않도록 막은 후 닫기
-            suppressFormShow = true;
-            try {
-                selectByIntakeNo(saved.getIntakeNo());
-            } finally {
-                suppressFormShow = false;
-            }
-            hideForm();
+            dirty.set(false);
+            Toast.show(intakeTable, "입고번호 " + saved.getIntakeNo() + " 저장되었습니다");
+            return true;
         } catch (IllegalArgumentException e) {
             Dialogs.warn("입력 오류", e.getMessage());
+            return false;
         } catch (RuntimeException e) {
             Dialogs.error("저장 실패", e.getMessage());
+            return false;
         }
     }
 
@@ -898,6 +1024,16 @@ public class CustomerIntakeController {
     }
 
     private void loadToForm(CustomerIntake i) {
+        loadingForm = true;
+        try {
+            loadToFormInner(i);
+        } finally {
+            loadingForm = false;
+            dirty.set(false);
+        }
+    }
+
+    private void loadToFormInner(CustomerIntake i) {
         editing = i;
 
         // 입고
@@ -1056,33 +1192,39 @@ public class CustomerIntakeController {
     }
 
     private void clearForm() {
-        // 입고
-        intakeNoField.clear();
-        intakeDatePicker.setValue(LocalDate.now());
-        vehicleNameField.clear();
-        vehicleNumberField.clear();
-        phoneField.clear();
-        repairTypeChoice.setValue(RepairType.GENERAL);
-        cbSelf.setSelected(false);
-        cbOpponent.setSelected(false);
-        cbGeneral.setSelected(false);
-        cbFault.setSelected(false);
-        releaseDatePicker.setValue(null);
-        selfPayAmountField.clear();
-        selfPayDatePicker.setValue(null);
-        towDriverField.clear();
-        towAmountField.clear();
-        memoArea.clear();
+        loadingForm = true;
+        try {
+            // 입고
+            intakeNoField.clear();
+            intakeDatePicker.setValue(LocalDate.now());
+            vehicleNameField.clear();
+            vehicleNumberField.clear();
+            phoneField.clear();
+            repairTypeChoice.setValue(RepairType.GENERAL);
+            cbSelf.setSelected(false);
+            cbOpponent.setSelected(false);
+            cbGeneral.setSelected(false);
+            cbFault.setSelected(false);
+            releaseDatePicker.setValue(null);
+            selfPayAmountField.clear();
+            selfPayDatePicker.setValue(null);
+            towDriverField.clear();
+            towAmountField.clear();
+            memoArea.clear();
 
-        useRentalCheck.setSelected(false);
-        clearRentalFields();
-        rentalNotice.setText("");
+            useRentalCheck.setSelected(false);
+            clearRentalFields();
+            rentalNotice.setText("");
 
-        useOwnClaimCheck.setSelected(false);
-        clearOwnClaimFields();
+            useOwnClaimCheck.setSelected(false);
+            clearOwnClaimFields();
 
-        useOpponentClaimCheck.setSelected(false);
-        clearOpponentClaimFields();
+            useOpponentClaimCheck.setSelected(false);
+            clearOpponentClaimFields();
+        } finally {
+            loadingForm = false;
+            dirty.set(false);
+        }
     }
 
     private void clearRentalFields() {
@@ -1138,11 +1280,159 @@ public class CustomerIntakeController {
         return amount == null ? "" : amount.toString();
     }
 
+    // -------------------- 컬럼 표시/숨김 --------------------
+
+    /** 그룹 컬럼 표시 여부를 사용자 영역 Preferences 에 저장 — 다음 실행 때도 유지. */
+    private static final Preferences COLUMN_PREFS =
+            Preferences.userNodeForPackage(CustomerIntakeController.class).node("columns");
+
+    /** 메뉴는 lazily 생성하고 캐시 — 매 클릭마다 새 binding 이 쌓이는 것을 방지. */
+    private ContextMenu columnsContextMenu;
+
+    /**
+     * 저장된 표시 여부를 컬럼에 적용하고, 이후 변경 시 Preferences 에 저장하는 리스너를 단다.
+     * 기본값은 모두 표시(true) — 사용자가 명시적으로 숨겼을 때만 false 가 영구화된다.
+     */
+    private void applyColumnVisibilityPrefs() {
+        bindGroupVisibilityPref(grpIntake,         "intake");
+        bindGroupVisibilityPref(grpRelease,        "release");
+        bindGroupVisibilityPref(grpTow,            "tow");
+        bindGroupVisibilityPref(grpRental,         "rental");
+        bindGroupVisibilityPref(grpOwnClaim,       "ownClaim");
+        bindGroupVisibilityPref(grpOpponentClaim,  "opponentClaim");
+    }
+
+    private void bindGroupVisibilityPref(TableColumn<?, ?> col, String key) {
+        if (col == null) return;
+        col.setVisible(COLUMN_PREFS.getBoolean(key, true));
+        col.visibleProperty().addListener((obs, o, n) -> COLUMN_PREFS.putBoolean(key, n));
+    }
+
+    /** [컬럼 ▾] 버튼 클릭 — 그룹별 표시/숨김 체크박스 메뉴를 버튼 아래에 띄운다. */
+    @FXML
+    private void onColumnsMenu() {
+        if (columnsContextMenu == null) {
+            columnsContextMenu = buildColumnsMenu();
+        }
+        columnsContextMenu.show(columnsBtn, Side.BOTTOM, 0, 0);
+    }
+
+    private ContextMenu buildColumnsMenu() {
+        ContextMenu menu = new ContextMenu();
+        menu.getItems().addAll(
+                groupToggleItem("입고 정보",     grpIntake),
+                groupToggleItem("출고/자부담",   grpRelease),
+                groupToggleItem("견인",          grpTow),
+                groupToggleItem("대차",          grpRental),
+                groupToggleItem("자차 보험청구", grpOwnClaim),
+                groupToggleItem("대물 보험청구", grpOpponentClaim),
+                new SeparatorMenuItem()
+        );
+        MenuItem showAll = new MenuItem("모두 표시");
+        showAll.setOnAction(e -> {
+            grpIntake.setVisible(true);
+            grpRelease.setVisible(true);
+            grpTow.setVisible(true);
+            grpRental.setVisible(true);
+            grpOwnClaim.setVisible(true);
+            grpOpponentClaim.setVisible(true);
+        });
+        menu.getItems().add(showAll);
+        return menu;
+    }
+
+    /**
+     * 메뉴 안에 들어갈 체크박스 아이템.
+     * CheckMenuItem 은 클릭 시 메뉴가 닫혀버려 연속 토글이 불편 — 대신 CheckBox 를 CustomMenuItem 에
+     * 끼우고 hideOnClick=false 로 메뉴를 열어둔 채 여러 그룹을 한 번에 조정할 수 있게 한다.
+     */
+    private CustomMenuItem groupToggleItem(String label, TableColumn<?, ?> col) {
+        CheckBox cb = new CheckBox(label);
+        cb.setSelected(col.isVisible());
+        cb.selectedProperty().bindBidirectional(col.visibleProperty());
+        CustomMenuItem item = new CustomMenuItem(cb);
+        item.setHideOnClick(false);
+        return item;
+    }
+
+    // -------------------- Dirty 추적 --------------------
+
+    /**
+     * 폼 모든 입력 컨트롤에 변경 리스너를 달아 dirty 플래그를 켠다.
+     * loadToForm/clearForm 으로 프로그램이 채우는 동안엔 loadingForm 가드로 무시된다.
+     * configureForm 에서 초기값(today 등)을 세팅한 *후* initialize() 에서 한 번만 호출.
+     */
+    private void registerDirtyListeners() {
+        // 텍스트 입력
+        List<TextInputControl> texts = List.of(
+                vehicleNameField, vehicleNumberField, phoneField,
+                selfPayAmountField, towDriverField, towAmountField, memoArea,
+                ownClaimAmountField, ownReceivedAmountField, ownClaimMemoArea,
+                opponentClaimAmountField, opponentReceivedAmountField, opponentClaimMemoArea,
+                rentalMemoArea
+        );
+        for (TextInputControl t : texts) {
+            t.textProperty().addListener((obs, o, n) -> markDirty());
+        }
+
+        // 날짜
+        List<DatePicker> dates = List.of(
+                intakeDatePicker, releaseDatePicker, selfPayDatePicker,
+                rentalStartPicker, rentalEndPicker,
+                ownClaimDatePicker, ownReceivedDatePicker,
+                opponentClaimDatePicker, opponentReceivedDatePicker
+        );
+        for (DatePicker dp : dates) {
+            dp.valueProperty().addListener((obs, o, n) -> markDirty());
+        }
+
+        // 체크박스
+        List<CheckBox> cbs = List.of(
+                cbSelf, cbOpponent, cbGeneral, cbFault,
+                useRentalCheck, useOwnClaimCheck, useOpponentClaimCheck
+        );
+        for (CheckBox cb : cbs) {
+            cb.selectedProperty().addListener((obs, o, n) -> markDirty());
+        }
+
+        // 콤보/선택
+        repairTypeChoice.valueProperty().addListener((obs, o, n) -> markDirty());
+        rentalVehicleCombo.valueProperty().addListener((obs, o, n) -> markDirty());
+        ownCompanyCombo.valueProperty().addListener((obs, o, n) -> markDirty());
+        opponentCompanyCombo.valueProperty().addListener((obs, o, n) -> markDirty());
+    }
+
+    private void markDirty() {
+        if (!loadingForm) dirty.set(true);
+    }
+
+    /**
+     * 변경사항 폐기 확인 — dirty 면 사용자에게 묻고 OK 면 true.
+     * 호출자는 false 반환 시 동작을 중단해야 한다.
+     */
+    private boolean confirmDiscardChanges() {
+        return Dialogs.confirm("저장하지 않은 변경",
+                "입력한 내용이 저장되지 않았습니다.\n변경사항을 버리시겠습니까?");
+    }
+
     // -------------------- 차량명 자동완성 --------------------
 
     private void setupVehicleNameAutoComplete() {
-        vehicleNameAutoComplete = new ContextMenu();
-        vehicleNameAutoComplete.setAutoHide(true);
+        vehicleNameSuggestionList = new ListView<>();
+        vehicleNameSuggestionList.getStyleClass().add("autocomplete-list");
+        vehicleNameSuggestionList.setFocusTraversable(false);
+        vehicleNameSuggestionList.setFixedCellSize(28);
+        vehicleNameSuggestionList.setCellFactory(lv -> new VehicleNameSuggestionCell());
+        vehicleNameSuggestionList.setOnMouseClicked(e -> {
+            String selected = vehicleNameSuggestionList.getSelectionModel().getSelectedItem();
+            if (selected != null) commitVehicleNameSuggestion(selected);
+        });
+
+        vehicleNamePopup = new Popup();
+        vehicleNamePopup.setAutoHide(true);
+        vehicleNamePopup.setHideOnEscape(true);
+        vehicleNamePopup.getContent().add(vehicleNameSuggestionList);
+
         reloadVehicleNameSuggestions();
 
         vehicleNameField.textProperty().addListener((obs, oldV, newV) -> updateVehicleNameAutoComplete(newV));
@@ -1154,9 +1444,52 @@ public class CustomerIntakeController {
                     String upper = t.toUpperCase(Locale.ROOT);
                     if (!upper.equals(t)) vehicleNameField.setText(upper);
                 }
-                vehicleNameAutoComplete.hide();
+                vehicleNamePopup.hide();
             }
         });
+
+        // ↑/↓ 로 ListView 선택을 옮기고, Enter 로 확정, Esc 로 팝업만 닫는다.
+        // 팝업이 떠있을 때만 키를 가로채 — 폼 단축키(Esc=닫기)를 평소엔 그대로 살린다.
+        vehicleNameField.addEventFilter(KeyEvent.KEY_PRESSED, this::handleVehicleNameKey);
+    }
+
+    private void handleVehicleNameKey(KeyEvent ev) {
+        if (!vehicleNamePopup.isShowing()) return;
+        var sel = vehicleNameSuggestionList.getSelectionModel();
+        int size = vehicleNameSuggestionList.getItems().size();
+        int cur = sel.getSelectedIndex();
+        switch (ev.getCode()) {
+            case DOWN -> {
+                int next = (cur < 0) ? 0 : Math.min(cur + 1, size - 1);
+                sel.select(next);
+                vehicleNameSuggestionList.scrollTo(next);
+                ev.consume();
+            }
+            case UP -> {
+                int prev = (cur <= 0) ? 0 : cur - 1;
+                sel.select(prev);
+                vehicleNameSuggestionList.scrollTo(prev);
+                ev.consume();
+            }
+            case ENTER -> {
+                String selected = sel.getSelectedItem();
+                if (selected != null) {
+                    commitVehicleNameSuggestion(selected);
+                    ev.consume();
+                }
+            }
+            case ESCAPE -> {
+                vehicleNamePopup.hide();
+                ev.consume();    // 폼 닫힘 방지
+            }
+            default -> { /* 다른 키는 그대로 통과 — 계속 입력 */ }
+        }
+    }
+
+    private void commitVehicleNameSuggestion(String name) {
+        vehicleNameField.setText(name);
+        vehicleNameField.positionCaret(name.length());
+        vehicleNamePopup.hide();
     }
 
     private void reloadVehicleNameSuggestions() {
@@ -1169,29 +1502,82 @@ public class CustomerIntakeController {
 
     private void updateVehicleNameAutoComplete(String input) {
         if (input == null || input.isBlank()) {
-            vehicleNameAutoComplete.hide();
+            vehicleNamePopup.hide();
             return;
         }
         String q = input.trim().toUpperCase(Locale.ROOT);
-        List<MenuItem> items = new ArrayList<>();
+        List<String> matches = new ArrayList<>();
         for (String name : vehicleNameSuggestions) {
-            if (items.size() >= 8) break;
+            if (matches.size() >= 8) break;
             String upper = name.toUpperCase(Locale.ROOT);
             if (!upper.contains(q)) continue;
             if (upper.equals(q)) continue;  // 입력과 동일하면 제안 의미 없음
-            MenuItem mi = new MenuItem(name);
-            mi.setOnAction(e -> {
-                vehicleNameField.setText(name);
-                vehicleNameField.positionCaret(name.length());
-                vehicleNameAutoComplete.hide();
-            });
-            items.add(mi);
+            matches.add(name);
         }
-        vehicleNameAutoComplete.getItems().setAll(items);
-        if (items.isEmpty()) {
-            vehicleNameAutoComplete.hide();
-        } else if (!vehicleNameAutoComplete.isShowing()) {
-            vehicleNameAutoComplete.show(vehicleNameField, Side.BOTTOM, 0, 0);
+        if (matches.isEmpty()) {
+            vehicleNamePopup.hide();
+            return;
+        }
+
+        vehicleNameSuggestionList.getItems().setAll(matches);
+        // 첫 항목을 미리 선택해 두면 Enter 1회로 바로 확정 가능.
+        vehicleNameSuggestionList.getSelectionModel().select(0);
+        vehicleNameSuggestionList.scrollTo(0);
+
+        // 항목 수에 맞춰 높이 조절 (cell 28 + 컨테이너 padding 4×2)
+        double height = matches.size() * 28 + 8;
+        vehicleNameSuggestionList.setPrefHeight(height);
+        vehicleNameSuggestionList.setMaxHeight(height);
+        vehicleNameSuggestionList.setPrefWidth(Math.max(vehicleNameField.getWidth(), 200));
+
+        if (!vehicleNamePopup.isShowing()) {
+            var bounds = vehicleNameField.localToScreen(vehicleNameField.getBoundsInLocal());
+            if (bounds != null) {
+                vehicleNamePopup.show(vehicleNameField, bounds.getMinX(), bounds.getMaxY());
+            }
+        }
+    }
+
+    /**
+     * 자동완성 셀 — 입력값과 일치하는 부분 문자열을 굵게 강조해
+     * 어느 부분이 매칭됐는지 한눈에 보이게 한다.
+     */
+    private final class VehicleNameSuggestionCell extends ListCell<String> {
+        @Override
+        protected void updateItem(String item, boolean empty) {
+            super.updateItem(item, empty);
+            if (empty || item == null) {
+                setText(null);
+                setGraphic(null);
+                return;
+            }
+            String query = vehicleNameField.getText();
+            if (query == null || query.isBlank()) {
+                setText(item);
+                setGraphic(null);
+                return;
+            }
+            String upperQuery = query.trim().toUpperCase(Locale.ROOT);
+            int idx = item.toUpperCase(Locale.ROOT).indexOf(upperQuery);
+            if (idx < 0) {
+                setText(item);
+                setGraphic(null);
+                return;
+            }
+            TextFlow flow = new TextFlow();
+            flow.getStyleClass().add("autocomplete-cell-flow");
+            if (idx > 0) {
+                flow.getChildren().add(new Text(item.substring(0, idx)));
+            }
+            Text match = new Text(item.substring(idx, idx + upperQuery.length()));
+            match.getStyleClass().add("autocomplete-match");
+            flow.getChildren().add(match);
+            int tail = idx + upperQuery.length();
+            if (tail < item.length()) {
+                flow.getChildren().add(new Text(item.substring(tail)));
+            }
+            setText(null);
+            setGraphic(flow);
         }
     }
 }

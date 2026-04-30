@@ -146,21 +146,31 @@ public class DashboardController {
 
     private TableCell<CustomerIntake, String> stageCell() {
         return new TableCell<>() {
+            private final Label badge = new Label();
+            { badge.getStyleClass().add("status-badge"); }
+
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                getStyleClass().removeAll("badge-repairing", "badge-released", "badge-claimed",
+                if (empty || item == null || item.isEmpty()) {
+                    setGraphic(null);
+                    setText(null);
+                    return;
+                }
+                badge.setText(item);
+                badge.getStyleClass().removeAll(
+                        "badge-repairing", "badge-released", "badge-claimed",
                         "badge-settled", "badge-closed");
-                if (empty || item == null) { setText(""); return; }
-                setText(item);
                 switch (item) {
-                    case "수리중"     -> getStyleClass().add("badge-repairing");
-                    case "출고완료"   -> getStyleClass().add("badge-released");
-                    case "청구완료"   -> getStyleClass().add("badge-claimed");
-                    case "수령완료"   -> getStyleClass().add("badge-settled");
-                    case "종결"       -> getStyleClass().add("badge-closed");
+                    case "수리중"     -> badge.getStyleClass().add("badge-repairing");
+                    case "출고완료"   -> badge.getStyleClass().add("badge-released");
+                    case "청구완료"   -> badge.getStyleClass().add("badge-claimed");
+                    case "수령완료"   -> badge.getStyleClass().add("badge-settled");
+                    case "종결"       -> badge.getStyleClass().add("badge-closed");
                     default -> { /* no-op */ }
                 }
+                setGraphic(badge);
+                setText(null);
             }
         };
     }

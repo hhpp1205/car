@@ -1,5 +1,6 @@
 package com.jeonbuk.repair.controller;
 
+import com.jeonbuk.repair.view.DisplaySettingsDialog;
 import com.jeonbuk.repair.view.ViewLoader;
 import javafx.fxml.FXML;
 import javafx.scene.Parent;
@@ -13,6 +14,7 @@ public class MainController {
     @FXML private Button navIntake;
     @FXML private Button navRental;
     @FXML private Button navStats;
+    @FXML private Button navSettings;
 
     private Parent dashboardView;
     private DashboardController dashboardCtrl;
@@ -76,6 +78,11 @@ public class MainController {
     private void onNavStats() {
         statsCtrl.refresh();
         switchTo(statsView, navStats);
+    }
+
+    @FXML
+    private void onNavSettings() {
+        DisplaySettingsDialog.show(navSettings.getScene().getWindow());
     }
 
     private void showDashboard() {

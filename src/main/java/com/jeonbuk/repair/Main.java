@@ -1,6 +1,7 @@
 package com.jeonbuk.repair;
 
 import atlantafx.base.theme.CupertinoLight;
+import com.jeonbuk.repair.util.DisplayPreferences;
 import com.jeonbuk.repair.util.Fonts;
 import com.jeonbuk.repair.util.HibernateUtil;
 import com.jeonbuk.repair.view.ViewLoader;
@@ -30,6 +31,9 @@ public class Main extends Application {
         Scene scene = new Scene(root);
         var css = getClass().getResource("/css/app.css");
         if (css != null) scene.getStylesheets().add(css.toExternalForm());
+
+        // 사용자 표시 설정(글자 크기·테이블 줄 높이) — 마지막에 들어가 cascade override
+        DisplayPreferences.apply(scene);
 
         stage.setTitle("전북공업사 통합 관리 시스템");
         stage.setScene(scene);

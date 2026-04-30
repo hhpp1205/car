@@ -7,7 +7,6 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.RadioButton?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.SplitPane?>
@@ -15,12 +14,13 @@
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
 <?import javafx.scene.control.ToggleGroup?>
-<?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.RowConstraints?>
 <?import javafx.scene.layout.VBox?>
 
@@ -28,25 +28,32 @@
             fx:controller="com.jeonbuk.repair.controller.CustomerIntakeController">
 
     <top>
-        <ToolBar>
-            <Label text="검색:"/>
-            <TextField fx:id="searchField" prefWidth="240" promptText="입고번호 / 차량명 / 차량번호 / 전화"/>
-            <Button text="조회" onAction="#onSearch"/>
-            <Button text="전체" onAction="#onResetSearch"/>
-            <Separator orientation="VERTICAL"/>
-            <fx:define>
-                <ToggleGroup fx:id="filterGroup"/>
-            </fx:define>
-            <RadioButton fx:id="filterActive" text="진행 중" toggleGroup="$filterGroup" selected="true" onAction="#onFilterChanged"/>
-            <RadioButton fx:id="filterClosed" text="종결"   toggleGroup="$filterGroup" onAction="#onFilterChanged"/>
-            <RadioButton fx:id="filterAll"    text="전체"   toggleGroup="$filterGroup" onAction="#onFilterChanged"/>
-            <Separator orientation="VERTICAL"/>
-            <Button fx:id="closeBtn"  text="종결"     onAction="#onCloseIntake"/>
-            <Button fx:id="reopenBtn" text="종결취소" onAction="#onReopenIntake"/>
-            <Label text="    "/>
-            <Button text="신규" onAction="#onNew" styleClass="primary"/>
-            <Button text="삭제" onAction="#onDelete"/>
-        </ToolBar>
+        <VBox styleClass="toss-header">
+            <!-- 1줄: 데이터 탐색 (pill 검색 + segmented 필터) -->
+            <HBox styleClass="toss-toolbar-row" alignment="CENTER_LEFT" spacing="10">
+                <TextField fx:id="searchField" styleClass="search-pill"
+                           promptText="입고번호 · 차량명 · 차량번호 · 전화 검색" HBox.hgrow="ALWAYS"/>
+                <Button text="조회" onAction="#onSearch" styleClass="btn-pill-primary"/>
+                <Button text="전체" onAction="#onResetSearch" styleClass="btn-ghost"/>
+                <fx:define>
+                    <ToggleGroup fx:id="filterGroup"/>
+                </fx:define>
+                <HBox styleClass="segmented-filter" alignment="CENTER">
+                    <ToggleButton fx:id="filterActive" text="진행 중" toggleGroup="$filterGroup" selected="true" onAction="#onFilterChanged"/>
+                    <ToggleButton fx:id="filterClosed" text="종결"   toggleGroup="$filterGroup" onAction="#onFilterChanged"/>
+                    <ToggleButton fx:id="filterAll"    text="전체"   toggleGroup="$filterGroup" onAction="#onFilterChanged"/>
+                </HBox>
+            </HBox>
+            <!-- 2줄: 레코드 작업 (좌: 신규/삭제 · 우: 종결류 + 컬럼 표시) -->
+            <HBox styleClass="toss-toolbar-row, toss-toolbar-row-bottom" alignment="CENTER_LEFT" spacing="6">
+                <Button text="+ 신규" onAction="#onNew" styleClass="btn-pill-primary"/>
+                <Button text="삭제" onAction="#onDelete" styleClass="btn-ghost"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="closeBtn"  text="종결"     onAction="#onCloseIntake"   styleClass="btn-ghost"/>
+                <Button fx:id="reopenBtn" text="종결취소" onAction="#onReopenIntake"  styleClass="btn-ghost"/>
+                <Button fx:id="columnsBtn" text="컬럼 ▾" onAction="#onColumnsMenu"    styleClass="btn-ghost"/>
+            </HBox>
+        </VBox>
     </top>
 
     <center>
@@ -59,7 +66,7 @@
                     <TableColumn fx:id="colSelect" text="" prefWidth="34" minWidth="34" maxWidth="34"
                                  sortable="false" resizable="false"/>
 
-                    <TableColumn text="입고 정보" styleClass="group-header">
+                    <TableColumn fx:id="grpIntake" text="입고 정보" styleClass="group-header">
                         <columns>
                             <TableColumn fx:id="colIntakeNo"      text="입고번호" prefWidth="100"/>
                             <TableColumn fx:id="colIntakeDate"    text="입고일"   prefWidth="100"/>
@@ -69,7 +76,7 @@
                         </columns>
                     </TableColumn>
 
-                    <TableColumn text="출고/자부담" styleClass="group-header">
+                    <TableColumn fx:id="grpRelease" text="출고/자부담" styleClass="group-header">
                         <columns>
                             <TableColumn fx:id="colReleaseDate"   text="출고일자"     prefWidth="100"/>
                             <TableColumn fx:id="colSelfPayAmount" text="자기부담금"   prefWidth="100"/>
@@ -77,20 +84,20 @@
                         </columns>
                     </TableColumn>
 
-                    <TableColumn text="견인" styleClass="group-header">
+                    <TableColumn fx:id="grpTow" text="견인" styleClass="group-header">
                         <columns>
                             <TableColumn fx:id="colTowDriver" text="기사" prefWidth="100"/>
                             <TableColumn fx:id="colTowAmount" text="금액" prefWidth="100"/>
                         </columns>
                     </TableColumn>
 
-                    <TableColumn text="대차" styleClass="group-header">
+                    <TableColumn fx:id="grpRental" text="대차" styleClass="group-header">
                         <columns>
                             <TableColumn fx:id="colRentalVehicle" text="차량" prefWidth="120"/>
                         </columns>
                     </TableColumn>
 
-                    <TableColumn text="자차 보험청구" styleClass="group-header">
+                    <TableColumn fx:id="grpOwnClaim" text="자차 보험청구" styleClass="group-header">
                         <columns>
                             <TableColumn fx:id="colOwnCompany"        text="보험사" prefWidth="100"/>
                             <TableColumn fx:id="colOwnClaimAmount"    text="청구액" prefWidth="100"/>
@@ -100,7 +107,7 @@
                         </columns>
                     </TableColumn>
 
-                    <TableColumn text="대물 보험청구" styleClass="group-header">
+                    <TableColumn fx:id="grpOpponentClaim" text="대물 보험청구" styleClass="group-header">
                         <columns>
                             <TableColumn fx:id="colOpponentCompany"        text="보험사" prefWidth="100"/>
                             <TableColumn fx:id="colOpponentClaimAmount"    text="청구액" prefWidth="100"/>
@@ -316,9 +323,10 @@
                 <Separator/>
 
                 <HBox spacing="8">
-                    <Button text="저장"   onAction="#onSave"      styleClass="primary" prefWidth="120"/>
-                    <Button text="초기화" onAction="#onClear"     prefWidth="120"/>
-                    <Button text="닫기"   onAction="#onCloseForm" prefWidth="120"/>
+                    <Button text="저장하고 닫기"      onAction="#onSave"        styleClass="primary" prefWidth="140"/>
+                    <Button text="저장하고 새로 입력" onAction="#onSaveAndNew"  prefWidth="160"/>
+                    <Button text="초기화"             onAction="#onClear"       prefWidth="100"/>
+                    <Button text="닫기"               onAction="#onCloseForm"   prefWidth="100"/>
                 </HBox>
             </VBox>
 
