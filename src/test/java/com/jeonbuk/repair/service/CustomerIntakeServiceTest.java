@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -60,6 +61,17 @@ class CustomerIntakeServiceTest {
         CustomerIntake i = TestFixtures.intake();
         i.getClaims().add(TestFixtures.claim(i, ClaimSide.OWN, 1_000_000, 500_000));
         assertEquals(ProgressStatus.CLAIMED, service.computeStatus(i));
+    }
+
+    @Test
+    @DisplayName("computeStatus — closedAt 있으면 종결이 모든 자동 산출보다 우선")
+    void status_closed_overrides_all() {
+        CustomerIntake i = TestFixtures.intake();
+        // 수령완료 조건이 되어도 closedAt 있으면 CLOSED 가 이긴다
+        i.getClaims().add(TestFixtures.claim(i, ClaimSide.OWN, 500_000, 500_000));
+        i.setReleaseDate(LocalDate.of(2026, 4, 26));
+        i.setClosedAt(LocalDateTime.of(2026, 4, 30, 10, 0));
+        assertEquals(ProgressStatus.CLOSED, service.computeStatus(i));
     }
 
     @Test

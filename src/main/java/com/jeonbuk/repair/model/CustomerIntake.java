@@ -66,6 +66,10 @@ public class CustomerIntake {
     @Column(length = 500)
     private String memo;
 
+    /** 종결 처리 시각. NULL = 진행 중, 값 있음 = 종결됨. */
+    @Column(name = "closed_at")
+    private LocalDateTime closedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -139,6 +143,10 @@ public class CustomerIntake {
 
     public String getMemo() { return memo; }
     public void setMemo(String memo) { this.memo = memo; }
+
+    public LocalDateTime getClosedAt() { return closedAt; }
+    public void setClosedAt(LocalDateTime closedAt) { this.closedAt = closedAt; }
+    public boolean isClosed() { return closedAt != null; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

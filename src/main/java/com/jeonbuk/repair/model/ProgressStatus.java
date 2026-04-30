@@ -7,7 +7,8 @@ public enum ProgressStatus {
     REPAIRING("수리중"),
     RELEASED("출고완료"),
     CLAIMED("청구완료"),
-    SETTLED("수령완료");
+    SETTLED("수령완료"),
+    CLOSED("종결");
 
     private final String label;
 

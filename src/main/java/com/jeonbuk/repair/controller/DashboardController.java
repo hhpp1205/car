@@ -11,6 +11,7 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
@@ -19,11 +20,14 @@ import javafx.scene.control.TableView;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class DashboardController {
 
     private static final int RECENT_LIMIT = 12;
 
+    @FXML private CheckBox includeClosedCheck;
     @FXML private Label inProgressValue;
     @FXML private Label inProgressFootnote;
     @FXML private Label outstandingValue;
@@ -59,12 +63,28 @@ public class DashboardController {
         List<CustomerIntake> intakes = ServiceRegistry.get().intakeRepo().findAll();
         List<InsuranceClaim> claims  = ServiceRegistry.get().claimRepo().findAll();
 
+        // "종결 건 포함" 체크 — 기본값 true. 미체크 시 종결된 입고와 그 청구를 집계에서 제외.
+        boolean includeClosed = includeClosedCheck == null || includeClosedCheck.isSelected();
+        Set<Long> closedIntakeIds = intakes.stream()
+                .filter(CustomerIntake::isClosed)
+                .map(CustomerIntake::getId)
+                .collect(Collectors.toSet());
+
+        List<CustomerIntake> intakeScope = includeClosed
+                ? intakes
+                : intakes.stream().filter(i -> !i.isClosed()).toList();
+        List<InsuranceClaim> claimScope = includeClosed
+                ? claims
+                : claims.stream()
+                        .filter(c -> c.getIntake() == null || !closedIntakeIds.contains(c.getIntake().getId()))
+                        .toList();
+
         // 진행 중 입고 — 출고일 비어있는 건수
-        long inProgress = intakes.stream().filter(i -> i.getReleaseDate() == null).count();
+        long inProgress = intakeScope.stream().filter(i -> i.getReleaseDate() == null).count();
         inProgressValue.setText(String.valueOf(inProgress));
 
         // 미수금 — claim_amount 가 있고 received_amount 가 부족한 분의 합계
-        long outstanding = claims.stream()
+        long outstanding = claimScope.stream()
                 .mapToLong(c -> {
                     int amt = c.getClaimAmount() == null ? 0 : c.getClaimAmount();
                     int rcv = c.getReceivedAmount() == null ? 0 : c.getReceivedAmount();
@@ -73,20 +93,20 @@ public class DashboardController {
                 .sum();
         outstandingValue.setText(Formatters.money((int) outstanding) + " 원");
 
-        // 대차 중
+        // 대차 중 — 종결 토글과 무관 (대차는 종료일로 판정)
         long active = ServiceRegistry.get().rentalService().findActive().size();
         rentalActiveValue.setText(String.valueOf(active));
 
         // 30일 경과 미수령
         InsuranceClaimService claimSvc = ServiceRegistry.get().claimService();
-        long overdue = claims.stream().filter(claimSvc::isOverdue).count();
+        long overdue = claimScope.stream().filter(claimSvc::isOverdue).count();
         overdueValue.setText(String.valueOf(overdue));
         overdueFootnote.setText(overdue > 0
                 ? "확인 필요"
                 : "청구 후 30일+ 경과");
 
         // 최근 입고
-        List<CustomerIntake> recent = intakes.stream()
+        List<CustomerIntake> recent = intakeScope.stream()
                 .sorted(Comparator
                         .comparing(CustomerIntake::getIntakeDate, Comparator.nullsLast(Comparator.reverseOrder()))
                         .thenComparing(CustomerIntake::getId, Comparator.nullsLast(Comparator.reverseOrder())))
@@ -129,7 +149,8 @@ public class DashboardController {
             @Override
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
-                getStyleClass().removeAll("badge-repairing", "badge-released", "badge-claimed", "badge-settled");
+                getStyleClass().removeAll("badge-repairing", "badge-released", "badge-claimed",
+                        "badge-settled", "badge-closed");
                 if (empty || item == null) { setText(""); return; }
                 setText(item);
                 switch (item) {
@@ -137,6 +158,7 @@ public class DashboardController {
                     case "출고완료"   -> getStyleClass().add("badge-released");
                     case "청구완료"   -> getStyleClass().add("badge-claimed");
                     case "수령완료"   -> getStyleClass().add("badge-settled");
+                    case "종결"       -> getStyleClass().add("badge-closed");
                     default -> { /* no-op */ }
                 }
             }

@@ -2,6 +2,7 @@
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
@@ -17,6 +18,7 @@
     <HBox alignment="CENTER_LEFT" spacing="12">
         <Label text="대시보드" styleClass="page-title"/>
         <Region HBox.hgrow="ALWAYS"/>
+        <CheckBox fx:id="includeClosedCheck" text="종결 건 포함" selected="true" onAction="#onRefresh"/>
         <Button text="새로고침" styleClass="button-outlined" onAction="#onRefresh"/>
     </HBox>
 

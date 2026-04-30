@@ -1,6 +1,7 @@
 package com.jeonbuk.repair.repository;
 
 import com.jeonbuk.repair.model.CustomerIntake;
+import com.jeonbuk.repair.service.IntakeFilter;
 import com.jeonbuk.repair.util.Tx;
 import org.hibernate.Session;
 
@@ -32,24 +33,40 @@ public class CustomerIntakeRepository {
     }
 
     public List<CustomerIntake> findAll() {
-        return Tx.read(s -> s.createQuery(
-                        "from CustomerIntake order by intakeDate desc, id desc", CustomerIntake.class)
-                .getResultList());
+        return findAll(IntakeFilter.ALL);
+    }
+
+    public List<CustomerIntake> findAll(IntakeFilter filter) {
+        String where = closedClause(filter);
+        String hql = "from CustomerIntake" + where + " order by intakeDate desc, id desc";
+        return Tx.read(s -> s.createQuery(hql, CustomerIntake.class).getResultList());
     }
 
     public List<CustomerIntake> search(String keyword) {
-        if (keyword == null || keyword.isBlank()) return findAll();
+        return search(keyword, IntakeFilter.ALL);
+    }
+
+    public List<CustomerIntake> search(String keyword, IntakeFilter filter) {
+        if (keyword == null || keyword.isBlank()) return findAll(filter);
         String like = "%" + keyword.trim() + "%";
-        return Tx.read(s -> s.createQuery("""
-                        from CustomerIntake
-                        where intakeNo like :k
-                           or vehicleName like :k
-                           or vehicleNumber like :k
-                           or phone like :k
-                        order by intakeDate desc, id desc
-                        """, CustomerIntake.class)
+        String closed = closedClause(filter);
+        String prefix = closed.isEmpty() ? " where " : closed + " and ";
+        String hql = "from CustomerIntake"
+                + prefix
+                + "(intakeNo like :k or vehicleName like :k or vehicleNumber like :k or phone like :k)"
+                + " order by intakeDate desc, id desc";
+        return Tx.read(s -> s.createQuery(hql, CustomerIntake.class)
                 .setParameter("k", like)
                 .getResultList());
+    }
+
+    /** 필터에 맞는 HQL where 절(앞 공백 포함) 또는 빈 문자열. */
+    private static String closedClause(IntakeFilter filter) {
+        return switch (filter) {
+            case ACTIVE -> " where closedAt is null";
+            case CLOSED -> " where closedAt is not null";
+            case ALL    -> "";
+        };
     }
 
     /** 같은 날짜의 마지막 입고번호 (YYMMDD-NN) — 새 번호 생성용. */

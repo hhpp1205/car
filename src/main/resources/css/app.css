@@ -146,7 +146,8 @@
 .table-row-cell .badge-repairing,
 .table-row-cell .badge-released,
 .table-row-cell .badge-claimed,
-.table-row-cell .badge-settled {
+.table-row-cell .badge-settled,
+.table-row-cell .badge-closed {
     -fx-padding: 2 8 2 8;
     -fx-background-radius: 999;
     -fx-font-size: 11px;
@@ -157,6 +158,17 @@
 .badge-released  { -fx-text-fill: #1d4ed8; }
 .badge-claimed   { -fx-text-fill: #7c3aed; }
 .badge-settled   { -fx-text-fill: #15803d; }
+.badge-closed    { -fx-text-fill: #6b7280; }
+
+/* 종결된 row — 전체 톤을 회색 계열로 dim 처리해 활성 건과 구분 */
+.table-view .table-row-cell.row-closed,
+.table-view .table-row-cell.row-closed:odd,
+.table-view .table-row-cell.row-closed:even {
+    -fx-background-color: #f3f4f6;
+}
+.table-view .table-row-cell.row-closed .table-cell {
+    -fx-text-fill: #6b7280;
+}
 
 /* ───── 테이블 그룹 헤더 ───── */
 

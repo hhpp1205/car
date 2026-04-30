@@ -33,7 +33,8 @@ public final class DatabaseInitializer {
     private static final List<String> MIGRATIONS = List.of(
             "db/migration/V001__init.sql",
             "db/migration/V002__seed.sql",
-            "db/migration/V003__add_tow_info.sql"
+            "db/migration/V003__add_tow_info.sql",
+            "db/migration/V004__add_closed_status.sql"
     );
 
     private DatabaseInitializer() {}

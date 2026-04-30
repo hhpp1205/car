@@ -7,6 +7,7 @@
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.RadioButton?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.SplitPane?>
@@ -14,6 +15,7 @@
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleGroup?>
 <?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.ColumnConstraints?>
@@ -31,6 +33,16 @@
             <TextField fx:id="searchField" prefWidth="240" promptText="입고번호 / 차량명 / 차량번호 / 전화"/>
             <Button text="조회" onAction="#onSearch"/>
             <Button text="전체" onAction="#onResetSearch"/>
+            <Separator orientation="VERTICAL"/>
+            <fx:define>
+                <ToggleGroup fx:id="filterGroup"/>
+            </fx:define>
+            <RadioButton fx:id="filterActive" text="진행 중" toggleGroup="$filterGroup" selected="true" onAction="#onFilterChanged"/>
+            <RadioButton fx:id="filterClosed" text="종결"   toggleGroup="$filterGroup" onAction="#onFilterChanged"/>
+            <RadioButton fx:id="filterAll"    text="전체"   toggleGroup="$filterGroup" onAction="#onFilterChanged"/>
+            <Separator orientation="VERTICAL"/>
+            <Button fx:id="closeBtn"  text="종결"     onAction="#onCloseIntake"/>
+            <Button fx:id="reopenBtn" text="종결취소" onAction="#onReopenIntake"/>
             <Label text="    "/>
             <Button text="신규" onAction="#onNew" styleClass="primary"/>
             <Button text="삭제" onAction="#onDelete"/>
@@ -40,8 +52,13 @@
     <center>
         <SplitPane fx:id="mainSplit" dividerPositions="0.55" orientation="VERTICAL">
 
-            <TableView fx:id="intakeTable">
+            <!-- editable=true 는 CheckBoxTableCell 이 disable 바인딩에서 풀려 동작하기 위함.
+                 다른 컬럼들은 edit cell factory 가 없으므로 텍스트 편집 모드로 들어가지 않는다. -->
+            <TableView fx:id="intakeTable" editable="true">
                 <columns>
+                    <TableColumn fx:id="colSelect" text="" prefWidth="34" minWidth="34" maxWidth="34"
+                                 sortable="false" resizable="false"/>
+
                     <TableColumn text="입고 정보" styleClass="group-header">
                         <columns>
                             <TableColumn fx:id="colIntakeNo"      text="입고번호" prefWidth="100"/>

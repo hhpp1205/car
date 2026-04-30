@@ -8,20 +8,25 @@ import com.jeonbuk.repair.model.RentalHistory;
 import com.jeonbuk.repair.model.RentalVehicle;
 import com.jeonbuk.repair.model.RepairType;
 import com.jeonbuk.repair.service.CustomerIntakeService;
+import com.jeonbuk.repair.service.IntakeFilter;
 import com.jeonbuk.repair.service.IntakeWorkflowService;
 import com.jeonbuk.repair.service.ServiceRegistry;
 import com.jeonbuk.repair.util.Dialogs;
 import com.jeonbuk.repair.util.Formatters;
 import com.jeonbuk.repair.util.HangulIme;
 import com.jeonbuk.repair.util.VehicleNameCatalog;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.geometry.Side;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.CheckBoxTableCell;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
@@ -34,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -59,7 +65,13 @@ public class CustomerIntakeController {
 
     // ----- 좌측 테이블 -----
     @FXML private TextField searchField;
+    @FXML private RadioButton filterActive;
+    @FXML private RadioButton filterClosed;
+    @FXML private RadioButton filterAll;
+    @FXML private Button closeBtn;
+    @FXML private Button reopenBtn;
     @FXML private TableView<CustomerIntake> intakeTable;
+    @FXML private TableColumn<CustomerIntake, Boolean>   colSelect;
     @FXML private TableColumn<CustomerIntake, String>    colIntakeNo;
     @FXML private TableColumn<CustomerIntake, LocalDate> colIntakeDate;
     @FXML private TableColumn<CustomerIntake, String>    colVehicleName;
@@ -144,6 +156,17 @@ public class CustomerIntakeController {
     private final List<String> vehicleNameSuggestions = new ArrayList<>();
     private ContextMenu vehicleNameAutoComplete;
 
+    /**
+     * 입고 id → 체크 상태 BooleanProperty.
+     * CheckBoxTableCell 이 이 property 를 양방향 바인딩하므로 사용자 클릭이 즉시 반영된다.
+     * 단일 진실 공급원 — checkedIds 같은 별도 Set 없이 property 의 .get() 으로 판정.
+     */
+    private final Map<Long, BooleanProperty> checkedProps = new HashMap<>();
+    /** 헤더의 전체선택 체크박스 — 체크/해제 시 현재 표시된 모든 행에 일괄 적용. */
+    private CheckBox headerSelectAll;
+    /** 헤더 동기화 시 발생하는 setSelected 가 onAction 을 다시 트리거하지 않도록 가드. */
+    private boolean syncingHeader = false;
+
     @FXML
     public void initialize() {
         configureTable();
@@ -176,6 +199,7 @@ public class CustomerIntakeController {
     // -------------------- 테이블 --------------------
 
     private void configureTable() {
+        configureSelectColumn();
         colIntakeNo.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getIntakeNo()));
         colIntakeDate.setCellValueFactory(c -> new SimpleObjectProperty<>(c.getValue().getIntakeDate()));
         colIntakeDate.setCellFactory(c -> dateCell());
@@ -221,14 +245,30 @@ public class CustomerIntakeController {
                 claimDifference(opponentClaimByIntakeId.get(c.getValue().getId()))));
         colStatus.setCellValueFactory(c -> new SimpleStringProperty(
                 intakeService.computeStatus(c.getValue()).getLabel()));
+        colStatus.setCellFactory(c -> statusCell());
+
+        // 종결된 row 는 전체 톤을 dim 처리해 활성 건과 시각 구분
+        intakeTable.setRowFactory(tv -> new TableRow<>() {
+            @Override
+            protected void updateItem(CustomerIntake item, boolean empty) {
+                super.updateItem(item, empty);
+                getStyleClass().remove("row-closed");
+                if (!empty && item != null && item.isClosed()) {
+                    getStyleClass().add("row-closed");
+                }
+            }
+        });
 
         intakeTable.setItems(data);
         intakeTable.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
+            updateBulkButtons();
             if (newV != null) {
                 loadToForm(newV);
                 if (!suppressFormShow) showForm();
             }
         });
+        // 초기 진입 — 선택 없음 상태에서 버튼 비활성
+        updateBulkButtons();
 
         // 테이블의 빈 영역(데이터 없는 row, placeholder, 스크롤 여백) 클릭 시 폼 닫기.
         // 헤더 클릭(정렬)은 native 동작을 유지하기 위해 제외.
@@ -287,12 +327,144 @@ public class CustomerIntakeController {
         return null;
     }
 
+    /**
+     * 체크박스 컬럼.
+     *
+     * CheckBoxTableCell 은 체크박스의 disable 을
+     *   not( tableView.editable AND column.editable AND cell.editable )
+     * 에 바인딩하므로 tableView/column 둘 다 editable=true 보장.
+     *
+     * cell factory 는 row 인덱스 → BooleanProperty 콜백 시그니처를 직접 사용 —
+     * cellValueFactory 우회 경로 없이 명확하게 양방향 바인딩이 걸린다.
+     */
+    private void configureSelectColumn() {
+        intakeTable.setEditable(true);
+        colSelect.setEditable(true);
+
+        headerSelectAll = new CheckBox();
+        headerSelectAll.setOnAction(e -> {
+            boolean wantAll = headerSelectAll.isSelected();
+            for (CustomerIntake i : data) {
+                if (i.getId() == null) continue;
+                checkPropertyOf(i.getId()).set(wantAll);
+            }
+            syncHeaderCheckbox();
+        });
+        colSelect.setGraphic(headerSelectAll);
+
+        colSelect.setCellFactory(CheckBoxTableCell.forTableColumn(rowIdx -> {
+            if (rowIdx == null || rowIdx < 0 || rowIdx >= data.size()) return null;
+            Long id = data.get(rowIdx).getId();
+            if (id == null) return null;
+            return checkPropertyOf(id);
+        }));
+    }
+
+    /** 해당 id 의 체크 상태 property 를 가져오거나 새로 만든다 (변경 시 헤더/버튼 자동 갱신). */
+    @SuppressWarnings("unchecked")
+    private BooleanProperty checkPropertyOf(Long id) {
+        return checkedProps.computeIfAbsent(id, k -> {
+            SimpleBooleanProperty p = new SimpleBooleanProperty(false);
+            p.addListener((obs, ov, nv) -> {
+                syncHeaderCheckbox();
+                updateBulkButtons();
+            });
+            return p;
+        });
+    }
+
+    private boolean isChecked(Long id) {
+        BooleanProperty p = checkedProps.get(id);
+        return p != null && p.get();
+    }
+
+    /** 현재 체크된 입고 id 들 (visible/hidden 무관). */
+    private List<Long> currentCheckedIds() {
+        List<Long> out = new ArrayList<>();
+        for (var e : checkedProps.entrySet()) {
+            if (e.getValue().get()) out.add(e.getKey());
+        }
+        return out;
+    }
+
+    /** 모든 체크 해제. */
+    private void clearAllChecks() {
+        for (BooleanProperty p : checkedProps.values()) {
+            if (p.get()) p.set(false);
+        }
+    }
+
+    private void syncHeaderCheckbox() {
+        if (headerSelectAll == null || syncingHeader) return;
+        long visibleCount = data.stream().filter(i -> i.getId() != null).count();
+        long checkedVisible = data.stream()
+                .filter(i -> i.getId() != null && isChecked(i.getId()))
+                .count();
+        syncingHeader = true;
+        try {
+            headerSelectAll.setIndeterminate(checkedVisible > 0 && checkedVisible < visibleCount);
+            headerSelectAll.setSelected(visibleCount > 0 && checkedVisible == visibleCount);
+        } finally {
+            syncingHeader = false;
+        }
+    }
+
+    /** 체크된 항목들의 종결 상태를 보고 [종결]/[종결취소] 버튼 활성/비활성 갱신. */
+    private void updateBulkButtons() {
+        if (closeBtn == null || reopenBtn == null) return;
+        boolean anyChecked = false;
+        boolean anyActive = false;
+        boolean anyClosed = false;
+        for (CustomerIntake i : data) {
+            if (i.getId() == null || !isChecked(i.getId())) continue;
+            anyChecked = true;
+            if (i.isClosed()) anyClosed = true;
+            else              anyActive = true;
+        }
+        if (!anyChecked) {
+            // 체크가 없으면 단건 폴백 — 선택된 행 기준
+            CustomerIntake sel = intakeTable.getSelectionModel().getSelectedItem();
+            if (sel == null) {
+                closeBtn.setDisable(true);
+                reopenBtn.setDisable(true);
+            } else {
+                closeBtn.setDisable(sel.isClosed());
+                reopenBtn.setDisable(!sel.isClosed());
+            }
+            return;
+        }
+        closeBtn.setDisable(!anyActive);
+        reopenBtn.setDisable(!anyClosed);
+    }
+
     private TableCell<CustomerIntake, LocalDate> dateCell() {
         return new TableCell<>() {
             @Override
             protected void updateItem(LocalDate item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty ? "" : Formatters.date(item));
+            }
+        };
+    }
+
+    private TableCell<CustomerIntake, String> statusCell() {
+        return new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                getStyleClass().removeAll(
+                        "badge-repairing", "badge-released", "badge-claimed",
+                        "badge-settled", "badge-closed");
+                if (empty || item == null) { setText(""); return; }
+                setText(item);
+                switch (item) {
+                    case "수리중"   -> getStyleClass().add("badge-repairing");
+                    case "출고완료" -> getStyleClass().add("badge-released");
+                    case "청구완료" -> getStyleClass().add("badge-claimed");
+                    case "수령완료" -> getStyleClass().add("badge-settled");
+                    case "종결"     -> getStyleClass().add("badge-closed");
+                    default -> { /* no-op */ }
+                }
             }
         };
     }
@@ -402,13 +574,141 @@ public class CustomerIntakeController {
     private void onSearch() {
         refreshRentalMap();
         refreshClaimMap();
-        data.setAll(intakeService.search(searchField.getText()));
+        data.setAll(intakeService.search(searchField.getText(), currentFilter()));
+        syncHeaderCheckbox();
+        updateBulkButtons();
     }
 
     @FXML
     private void onResetSearch() {
         searchField.clear();
         reload();
+    }
+
+    @FXML
+    private void onFilterChanged() {
+        // 필터를 바꾸면 검색어는 유지한 채 결과만 새로고침. 체크 상태는 reload() 에서 visible 기준으로 정리.
+        if (searchField.getText() == null || searchField.getText().isBlank()) {
+            reload();
+        } else {
+            onSearch();
+        }
+        // 선택된 행이 새 필터에서 사라질 수 있으므로 폼 정리
+        if (intakeTable.getSelectionModel().getSelectedItem() == null) {
+            hideForm();
+        }
+    }
+
+    private IntakeFilter currentFilter() {
+        if (filterClosed != null && filterClosed.isSelected()) return IntakeFilter.CLOSED;
+        if (filterAll    != null && filterAll.isSelected())    return IntakeFilter.ALL;
+        return IntakeFilter.ACTIVE;
+    }
+
+    @FXML
+    private void onCloseIntake() {
+        // 체크된 게 있으면 일괄 처리, 없으면 현재 선택 행으로 폴백.
+        // wantClosed=true → "처리 후 종결 상태로 만들고 싶다" → 현재 진행 중인 것이 대상.
+        List<CustomerIntake> targets = currentTargets(/*wantClosed*/ true);
+        if (targets.isEmpty()) {
+            Dialogs.warn("종결", "종결할 입고를 체크하거나 선택해 주세요.");
+            return;
+        }
+
+        // 경고 요약 — 미출고 / 미수령 잔액
+        int noRelease = 0;
+        long outstandingTotal = 0;
+        int outstandingCount = 0;
+        for (CustomerIntake t : targets) {
+            if (t.getReleaseDate() == null) noRelease++;
+            long out = t.getClaims().stream()
+                    .mapToLong(c -> {
+                        int amt = c.getClaimAmount() == null ? 0 : c.getClaimAmount();
+                        int rcv = c.getReceivedAmount() == null ? 0 : c.getReceivedAmount();
+                        return Math.max(0, amt - rcv);
+                    })
+                    .sum();
+            if (out > 0) {
+                outstandingTotal += out;
+                outstandingCount++;
+            }
+        }
+
+        StringBuilder msg = new StringBuilder();
+        msg.append("선택한 ").append(targets.size()).append("건을 종결하시겠습니까?\n");
+        if (noRelease > 0 || outstandingCount > 0) {
+            msg.append('\n');
+            if (noRelease > 0) {
+                msg.append("• 미출고 ").append(noRelease).append("건\n");
+            }
+            if (outstandingCount > 0) {
+                msg.append("• 미수령 잔액 있는 건 ").append(outstandingCount)
+                   .append("건 (총 ").append(Formatters.money((int) outstandingTotal)).append(" 원)\n");
+            }
+        }
+        if (!Dialogs.confirm("종결 확인", msg.toString())) return;
+
+        List<Long> ids = targets.stream().map(CustomerIntake::getId).toList();
+        CustomerIntakeService.BulkResult result = intakeService.closeAll(ids);
+        afterBulk("종결", result);
+    }
+
+    @FXML
+    private void onReopenIntake() {
+        // wantClosed=false → "처리 후 진행 상태로 만들고 싶다" → 현재 종결인 것이 대상.
+        List<CustomerIntake> targets = currentTargets(/*wantClosed*/ false);
+        if (targets.isEmpty()) {
+            Dialogs.warn("종결취소", "종결취소할 입고를 체크하거나 선택해 주세요.");
+            return;
+        }
+        if (!Dialogs.confirm("종결취소 확인",
+                "선택한 " + targets.size() + "건의 종결을 취소하시겠습니까?")) {
+            return;
+        }
+        List<Long> ids = targets.stream().map(CustomerIntake::getId).toList();
+        CustomerIntakeService.BulkResult result = intakeService.reopenAll(ids);
+        afterBulk("종결취소", result);
+    }
+
+    /**
+     * 일괄 처리 대상 — 체크된 게 있으면 그 중 wantClosed 와 반대 상태인 항목들,
+     * 체크가 없으면 현재 선택 행을 (조건에 맞을 때만) 단건으로 반환.
+     */
+    private List<CustomerIntake> currentTargets(boolean wantClosed) {
+        List<CustomerIntake> out = new ArrayList<>();
+        boolean hasChecked = false;
+        for (CustomerIntake i : data) {
+            if (i.getId() != null && isChecked(i.getId())) {
+                hasChecked = true;
+                if (i.isClosed() != wantClosed) out.add(i);
+            }
+        }
+        if (hasChecked) return out;
+
+        CustomerIntake sel = intakeTable.getSelectionModel().getSelectedItem();
+        if (sel != null && sel.getId() != null && sel.isClosed() != wantClosed) {
+            out.add(sel);
+        }
+        return out;
+    }
+
+    /** 일괄 처리 후 공통 마무리 — reload + 결과 보고 + 폼/체크 정리. */
+    private void afterBulk(String label, CustomerIntakeService.BulkResult result) {
+        clearAllChecks();
+        reload();
+        hideForm();
+        intakeTable.getSelectionModel().clearSelection();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(label).append(" 결과: ").append(result.processed()).append("건 처리");
+        if (result.skipped() > 0) sb.append(", ").append(result.skipped()).append("건 건너뜀");
+        if (!result.failures().isEmpty()) {
+            sb.append(", ").append(result.failures().size()).append("건 실패\n\n실패 사유:\n");
+            for (String f : result.failures()) sb.append("• ").append(f).append('\n');
+            Dialogs.error(label + " 일부 실패", sb.toString());
+        } else {
+            Dialogs.info(label + " 완료", sb.toString());
+        }
     }
 
     @FXML
@@ -505,7 +805,11 @@ public class CustomerIntakeController {
     private void reload() {
         refreshRentalMap();
         refreshClaimMap();
-        data.setAll(intakeService.findAll());
+        data.setAll(intakeService.findAll(currentFilter()));
+        // 체크 상태는 BooleanProperty 에 보존되어 있어 같은 id 가 다시 보이면 그대로 복원된다.
+        // 헤더와 버튼 상태만 현재 표시 기준으로 갱신.
+        syncHeaderCheckbox();
+        updateBulkButtons();
     }
 
     /**
