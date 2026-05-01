@@ -633,9 +633,22 @@ public class CustomerIntakeController {
         // 사고유형 → 청구 섹션 자동 활성화 (CLAUDE.md 요구사항)
         cbSelf.selectedProperty().addListener((obs, o, n) -> {
             if (n) useOwnClaimCheck.setSelected(true);
+            updateSelfPayHighlight();
         });
         cbOpponent.selectedProperty().addListener((obs, o, n) -> {
             if (n) useOpponentClaimCheck.setSelected(true);
+        });
+        // 자차 또는 일반수리 시 자기부담금 칸 강조 (CLAUDE.md 자동처리 항목)
+        cbGeneral.selectedProperty().addListener((obs, o, n) -> updateSelfPayHighlight());
+
+        // 자기부담금 입력 시 자부담수납일 자동 채움 (Excel 한계 해결 — CLAUDE.md)
+        // 이미 값이 있으면 덮어쓰지 않음. blank → non-blank 전이일 때만 작동.
+        selfPayAmountField.textProperty().addListener((obs, oldV, newV) -> {
+            boolean wasBlank = oldV == null || oldV.isBlank();
+            boolean nowFilled = newV != null && !newV.isBlank();
+            if (wasBlank && nowFilled && selfPayDatePicker.getValue() == null) {
+                selfPayDatePicker.setValue(LocalDate.now());
+            }
         });
 
         useRentalCheck.selectedProperty().addListener((obs, o, n) -> {
@@ -644,6 +657,18 @@ public class CustomerIntakeController {
 
         // 입고일은 신규 시 자동으로 오늘로 설정 — 그 외 날짜는 사용자가 캘린더에서 직접 선택.
         // "오늘" 체크박스 패턴은 UI 가 비좁아져 제거 (입고일은 intakeDatePicker.setValue(LocalDate.now()) 로 처리).
+    }
+
+    /** 자차/일반수리 체크 상태에 따라 자기부담금 칸 styleClass 토글. */
+    private void updateSelfPayHighlight() {
+        boolean active = cbSelf.isSelected() || cbGeneral.isSelected();
+        if (active) {
+            if (!selfPayAmountField.getStyleClass().contains("self-pay-active")) {
+                selfPayAmountField.getStyleClass().add("self-pay-active");
+            }
+        } else {
+            selfPayAmountField.getStyleClass().remove("self-pay-active");
+        }
     }
 
     /** 체크 시 날짜 칸을 LocalDate.now() 로 채우고 체크박스는 즉시 해제. RentalHistoryController 에서 사용. */

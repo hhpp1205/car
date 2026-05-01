@@ -430,6 +430,20 @@
     -fx-text-fill: -color-fg-default;
 }
 
+/* ───── 자기부담금 강조 (자차/일반수리 시) ─────
+   사고유형이 '자차' 또는 '일반수리' 일 때 자기부담금 칸을 amber 톤으로 강조해
+   "이 건은 손님 결제가 발생함" 을 시각적으로 환기. 그 외 사고유형은 평범한 입력칸. */
+.text-field.self-pay-active {
+    -fx-background-color: #fffbeb;             /* amber-50 */
+    -fx-border-color:     #fcd34d;             /* amber-300 */
+    -fx-border-width:     1.5;
+    -fx-border-radius:    4;
+    -fx-background-radius: 4;
+}
+.text-field.self-pay-active:focused {
+    -fx-border-color:     #b45309;             /* amber-700 — 포커스 시 진한 톤 */
+}
+
 /* ───── 차량명 자동완성 팝업 ───── */
 
 .autocomplete-list {

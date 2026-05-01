@@ -13,7 +13,7 @@
 | `service/` 의 검증·계산 로직 (DB 안 탐) | `src/test/java/com/jeonbuk/repair/service/` | 순수 단위 테스트, repo는 `null` 주입 가능 |
 | `service/` 의 트랜잭션 흐름 (create/update) | `src/test/java/com/jeonbuk/repair/service/*IntegrationTest.java` | `@ExtendWith(DatabaseExtension.class)` |
 | `repository/` 의 쿼리 / 매핑 | `src/test/java/com/jeonbuk/repair/repository/` | `@ExtendWith(DatabaseExtension.class)` |
-| `controller/` 의 UI 동작 | (미구현) Phase 4 에서 TestFX 도입 검토 | — |
+| `controller/` 의 UI 동작 / 입력 listener | `src/test/java/com/jeonbuk/repair/ui/` | TestFX (`@ExtendWith(ApplicationExtension.class)`) |
 
 ```bash
 ./gradlew test                  # 전체 테스트
@@ -86,9 +86,51 @@ class FooRepositoryTest {
 
 격리 보장: 각 테스트 클래스마다 신규 DB. 테스트 메서드 간엔 시드만 공유.
 
-### 3) UI / 컨트롤러 테스트 (현재 미구현)
+### 3) UI / 컨트롤러 테스트 (TestFX)
 
-JavaFX 컨트롤러는 Phase 4 에서 [TestFX](https://github.com/TestFX/TestFX) 도입을 검토. 그때까지는 컨트롤러 메서드를 얇게 유지하고 핵심 로직을 service/util 에 두어 단위 테스트로 커버.
+JavaFX 컨트롤러의 입력 listener·바인딩·키 입력 흐름은 [TestFX](https://github.com/TestFX/TestFX) 로 검증한다. 단위/통합 테스트로 못 잡는 영역 전용 — 즉 **service/util 로 분리할 수 없는 UI 측 동작**만 여기에 둔다.
+
+작성 패턴:
+
+```java
+@ExtendWith(ApplicationExtension.class)
+class FooFieldUiTest {
+
+    private TextField field;
+
+    @Start
+    void start(Stage stage) {
+        // 검증 대상의 최소 Scene 만 수동 구성 — FXML 전체를 띄우지 말 것.
+        field = new TextField();
+        field.setId("fooField");
+        // 컨트롤러와 동일한 listener 를 그대로 부착
+        field.textProperty().addListener((obs, old, val) -> { /* ... */ });
+        stage.setScene(new Scene(new StackPane(field), 240, 80));
+        stage.show();
+    }
+
+    @Test
+    void scenario(FxRobot robot) {
+        robot.clickOn("#fooField").write("...");
+        assertEquals(expected, field.getText());
+    }
+}
+```
+
+#### 헤드리스 / headed 모드
+
+현재 셋업은 **headed 모드** — 테스트 실행 시 잠깐 창이 뜬다.
+
+- **로컬 (Windows)**: 그냥 동작. 창이 깜빡임. 디버깅에 오히려 유용.
+- **CI (Ubuntu)**: `.github/workflows/ci.yml` 의 `xvfb-run` 으로 가상 디스플레이 위에서 동작.
+
+Monocle 헤드리스를 쓰지 않는 이유: JavaFX 21 의 Windows 빌드는 monocle 클래스를 jar 에 포함하지 않고 (Linux 전용), 외부 `openjfx-monocle` jar 는 internal API 시그니처가 어긋나 `AbstractMethodError` 가 난다. xvfb 로 충분.
+
+#### 참고
+
+- 샘플: `src/test/java/com/jeonbuk/repair/ui/PhoneFieldFormatterUiTest.java`
+- FXML 전체를 띄우면 ServiceRegistry/DB 가 같이 엮인다. 가능하면 검증 대상 listener 만 standalone Scene 으로 띄우고, 컨트롤러 통째로 검증해야 할 때만 `DatabaseExtension` 과 함께 쓴다.
+- `FxRobot.write` 는 한 글자씩 KEY_TYPED 이벤트를 발생시킨다. 영문/숫자만 안전. 한글 입력은 OS IME 동작을 타므로 따로 시뮬레이션 필요.
 
 ---
 
