@@ -50,7 +50,7 @@
                 <Button text="+ 신규" onAction="#onNew" styleClass="btn-pill-primary"/>
                 <Button text="삭제" onAction="#onDelete" styleClass="btn-ghost"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Button fx:id="closeBtn"  text="종결"     onAction="#onCloseIntake"   styleClass="btn-ghost"/>
+                <Button fx:id="closeBtn"  text="종결하기" onAction="#onCloseIntake"   styleClass="btn-ghost"/>
                 <Button fx:id="reopenBtn" text="종결취소" onAction="#onReopenIntake"  styleClass="btn-ghost"/>
                 <Button fx:id="columnsBtn" text="컬럼 ▾" onAction="#onColumnsMenu"    styleClass="btn-ghost"/>
             </HBox>
