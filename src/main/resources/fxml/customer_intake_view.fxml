@@ -32,7 +32,8 @@
             <!-- 1줄: 데이터 탐색 (pill 검색 + segmented 필터) -->
             <HBox styleClass="toss-toolbar-row" alignment="CENTER_LEFT" spacing="10">
                 <TextField fx:id="searchField" styleClass="search-pill"
-                           promptText="입고번호 · 차량명 · 차량번호 · 전화 검색" HBox.hgrow="ALWAYS"/>
+                           promptText="입고번호 · 차량명 · 차량번호 · 전화 검색"
+                           onAction="#onSearch" HBox.hgrow="ALWAYS"/>
                 <Button text="조회" onAction="#onSearch" styleClass="btn-pill-primary"/>
                 <Button text="전체" onAction="#onResetSearch" styleClass="btn-ghost"/>
                 <fx:define>
